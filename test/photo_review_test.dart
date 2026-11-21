@@ -121,6 +121,10 @@ void main() {
     expect(api.uploads, ['/api/photo-previews']);
   });
   testWidgets('원본을 열지 않고 판독값을 고쳐 저장할 수 있다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final api = TestBackend();
     api.choices.addAll({
       '/api/stores': {
@@ -151,8 +155,13 @@ void main() {
         'doc_type': 'DELIVERY',
         'store_name_read': '점포',
         'doc_date': '2026-01-02',
-        'deposit_amount': 25,
+        'supply_total': 2000000,
         'tax_total': null,
+        'document_total': 2000000,
+        'previous_balance': null,
+        'balance_after_dispatch': null,
+        'deposit_amount': 25,
+        'current_balance': null,
         'lines': [
           {
             'item': '채소',
@@ -191,6 +200,19 @@ void main() {
       await tester.ensureVisible(input);
       await tester.enterText(input, entry.value);
     }
+    final amountFields = [
+      for (final label in statementAmountLabels.values)
+        find.widgetWithText(TextFormField, '$label (원)'),
+    ];
+    for (var i = 1; i < amountFields.length; i++) {
+      await tester.ensureVisible(amountFields[i]);
+      expect(tester.getTopLeft(amountFields[i]).dy - tester.getBottomLeft(amountFields[i-1]).dy,
+          greaterThanOrEqualTo(16));
+    }
+    final storeField = find.widgetWithText(DropdownButtonFormField<String>, '내 점포');
+    await tester.ensureVisible(storeField);
+    expect(tester.getTopLeft(storeField).dy - tester.getBottomLeft(amountFields.last).dy,
+        greaterThanOrEqualTo(16));
     final qty = find.widgetWithText(TextFormField, '수량');
     await tester.scrollUntilVisible(qty, 180,
         scrollable: find.byType(Scrollable).first);
@@ -285,6 +307,8 @@ void main() {
     await tester.pumpAndSettle();
     final save = find.text('판독값 확인하고 저장');
     await tester.scrollUntilVisible(save, 180, scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
     await tester.tap(save);
     await tester.pumpAndSettle();
     final confirmed = jsonDecode(api.confirmed['review_json']!);
@@ -339,6 +363,8 @@ void main() {
     await tester.pumpAndSettle();
     final save = find.text('판독값 확인하고 저장');
     await tester.scrollUntilVisible(save, 180, scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
     await tester.tap(save);
     await tester.pumpAndSettle();
     final confirmed = jsonDecode(api.confirmed['review_json']!);
@@ -396,7 +422,12 @@ void main() {
       final tradeDate = find.widgetWithText(TextFormField, '원본 거래일');
       await tester.scrollUntilVisible(tradeDate, firstStore ? -180 : 180,
           scrollable: find.byType(Scrollable).first);
-      await tester.enterText(tradeDate, '2025-01-31');
+      final rawDate = switch (mode) {
+        'empty' => '20260230',
+        'match' => '2026.11.16',
+        _ => '2026-11-16',
+      };
+      await tester.enterText(tradeDate, rawDate);
       final vendor = find.widgetWithText(TextFormField, '새 거래처 이름 (공급자)');
       await tester.scrollUntilVisible(vendor, 180,
           scrollable: find.byType(Scrollable).first);
@@ -410,12 +441,27 @@ void main() {
       expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
       await tester.tap(save);
       await tester.pumpAndSettle();
+      if (mode == 'empty') {
+        expect(api.confirmed, isEmpty);
+        await tester.scrollUntilVisible(tradeDate, -180,
+            scrollable: find.byType(Scrollable).first);
+        expect(find.text('실제 날짜를 연월일 8자리로 입력해 주세요.'), findsOneWidget);
+        await tester.enterText(tradeDate, '20261116');
+        expect(tester.widget<EditableText>(find.descendant(
+          of: tradeDate, matching: find.byType(EditableText))).controller.text, '2026-11-16');
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(save, 180, scrollable: find.byType(Scrollable).first);
+        await tester.pumpAndSettle();
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+      }
       final request = jsonDecode(api.confirmed['review_json']!);
       expect(request[firstStore ? 'store_name' : 'store_id'],
           firstStore ? '우리 점포' : 'shop');
       expect(request['supplier_name'], '확인한 수산');
       expect(request['week_start'], '2026-11-09');
-      expect(request['trade_date'], '2025-01-31');
+      expect(request['trade_date'], '2026-11-16');
       expect(request['supplier_id'], isNull);
       expect(
           api.uploads, ['/api/photo-previews', '/api/photo-previews/confirm']);
