@@ -110,7 +110,10 @@ class _StartScreenState extends ConsumerState<StartScreen> {
       );
 }
 
-/// Dropdown of `{id, name}` rows.
+/// Field that opens a bottom sheet listing `{id, name}` rows.
+///
+/// Replaces the Material dropdown, whose popup covered the field and spanned
+/// the whole phone width without the app's rounded card style.
 class _Picker extends StatelessWidget {
   const _Picker({
     super.key,
@@ -126,21 +129,101 @@ class _Picker extends StatelessWidget {
   final String empty;
   final void Function(Json) onPick;
 
+  Future<void> _open(BuildContext context) async {
+    final picked = await showModalBottomSheet<Json>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: Palette.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      constraints: const BoxConstraints(maxWidth: 560),
+      builder: (context) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Text('$label 선택', style: Txt.section),
+            ),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                itemCount: rows.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, i) {
+                  final row = rows[i];
+                  final on = row['id']?.toString() == selected?['id']?.toString();
+                  return Material(
+                    color: on ? Palette.tint : Palette.canvas,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(color: on ? Palette.primary : Palette.line),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context, row),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                        child: Row(children: [
+                          Expanded(
+                            child: Text(row['name'].toString(),
+                                overflow: TextOverflow.ellipsis,
+                                style: Txt.value.copyWith(color: on ? Palette.primary : Palette.ink)),
+                          ),
+                          if (on) const Icon(Icons.check, color: Palette.primary, size: 20),
+                        ]),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+    if (picked != null && picked['id']?.toString() != selected?['id']?.toString()) {
+      onPick(picked);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (rows.isEmpty) return Text(empty, style: Txt.body);
-    return DropdownButtonFormField<String>(
-      initialValue: selected?['id']?.toString(),
-      isExpanded: true,
-      decoration: InputDecoration(labelText: label),
-      hint: Text('$label 선택'),
-      items: [
-        for (final r in rows)
-          DropdownMenuItem(
-              value: r['id'].toString(),
-              child: Text(r['name'].toString(), overflow: TextOverflow.ellipsis)),
-      ],
-      onChanged: (id) => onPick(rows.firstWhere((r) => r['id'].toString() == id)),
+    final name = selected?['name']?.toString();
+    return Semantics(
+      button: true,
+      label: '$label 선택',
+      child: Material(
+        color: Palette.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: name == null ? Palette.line : Palette.primary),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _open(context),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(label, style: Txt.caption),
+                  const SizedBox(height: 2),
+                  Text(name ?? '$label를 골라 주세요',
+                      overflow: TextOverflow.ellipsis,
+                      style: name == null
+                          ? Txt.body.copyWith(color: Palette.muted, fontSize: 16)
+                          : Txt.value.copyWith(fontSize: 16)),
+                ]),
+              ),
+              const Icon(Icons.expand_more, color: Palette.muted),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }
