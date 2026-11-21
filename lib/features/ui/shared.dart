@@ -84,8 +84,16 @@ abstract final class Palette {
   static const errInk = Color(0xffa22b2b);
 }
 
+const double inlineIconSize = 20;
+const double navigationIconSize = 24;
+
 ThemeData appTheme() => ThemeData(
       useMaterial3: true,
+      iconTheme: const IconThemeData(size: navigationIconSize),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(iconSize: inlineIconSize),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(iconSize: navigationIconSize),
       colorScheme: ColorScheme.fromSeed(
           seedColor: Palette.primary,
           primary: Palette.primary,
@@ -119,12 +127,14 @@ ThemeData appTheme() => ThemeData(
       ),
       filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
+        iconSize: inlineIconSize,
         minimumSize: const Size.fromHeight(56),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
       )),
       outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
+        iconSize: inlineIconSize,
         minimumSize: const Size.fromHeight(52),
         foregroundColor: Palette.ink,
         side: const BorderSide(color: Palette.line),
@@ -231,14 +241,51 @@ String docTypeText(Object? type) => switch (type) {
 
 String blockerText(Object? code) => switch (code) {
       'QTY_MISMATCH' => '청구와 수령 수량이 다릅니다',
-      'RECEIPT_MISSING' => '수령 기록이 연결되지 않았습니다',
+      'RECEIPT_MISSING' || 'MISSING_CONFIRMED_RECEIPT' => '수령 기록을 확인해 주세요',
       'INVOICE_MISSING' => '청구서가 없습니다',
       'DELIVERY_MISSING' => '납품 명세가 없습니다',
-      'REPLACEMENT_UNCONFIRMED' => '수정 청구서의 대체 대상을 확인해야 합니다',
-      'UNIT_MISMATCH' => '단위 환산 기준이 없습니다',
+      'REPLACEMENT_UNCONFIRMED' || 'UNCONFIRMED_REPLACEMENT' || 'AMBIGUOUS_REPLACEMENT' =>
+        '수정 청구서가 어떤 청구서를 대체하는지 확인해 주세요',
+      'UNIT_MISMATCH' || 'UNCONFIRMED_UNIT_CONVERSION' || 'UNCONFIRMED_INVOICE_UNIT' =>
+        '청구서와 납품·수령 기록의 수량 단위를 확인해 주세요',
       'SUPPLIER_MISMATCH' => '다른 거래처 자료가 섞여 있습니다',
-      _ => code?.toString() ?? '확인할 자료가 남아 있습니다',
+      'INVOICE_PERIOD_UNCONFIRMED' => '청구서의 기간이 이번 정산 기간과 맞는지 확인해 주세요',
+      'MISSING_BILLED_AMOUNT' || 'INVALID_BILLED_AMOUNT' => '청구서의 금액을 확인해 주세요',
+      'MISSING_EFFECTIVE_INVOICE' => '이번 정산에 적용할 청구서를 확인해 주세요',
+      'DELIVERY_OUTSIDE_PERIOD' => '납품일이 이번 정산 기간에 포함되는지 확인해 주세요',
+      'MISSING_INVOICE_ID' || 'INVOICE_ID_CONFLICT' || 'AMBIGUOUS_INVOICE_NUMBER' =>
+        '청구서 원본과 청구서 번호를 확인해 주세요',
+      'INVALID_INVOICE_TYPE' || 'UNCLASSIFIED_DOCUMENT' => '올린 자료의 문서 종류를 확인해 주세요',
+      'MISSING_INVOICE_EVIDENCE' || 'EMPTY_OCR_DOCUMENT' || 'MISSING_SOURCE_EVIDENCE' =>
+        '원본에서 해당 품목과 거래 내용을 확인해 주세요',
+      'UNCONFIRMED_QUANTITY_AGREEMENT' || 'UNRESOLVED_DECLARED_QUANTITY' =>
+        '거래처와 최종 합의한 수량을 확인해 주세요',
+      'MISSING_DOCUMENT_QUANTITY' => '납품 명세와 청구서에 수량이 적혀 있는지 확인해 주세요',
+      'MISSING_BILLING_LINE' || 'AMBIGUOUS_BILLING_LINE' => '청구서 품목에 해당하는 납품 건을 확인해 주세요',
+      'CONFLICTING_CLAIM' => '거래 메모와 수령 기록의 내용이 다릅니다. 실제 수령량을 확인해 주세요',
+      'MEMO_ID_CONFLICT' || 'INVALID_CONFIRMED_MEMO' || 'UNLINKED_CONFIRMED_MEMO' =>
+        '거래 메모의 내용과 연결된 납품 건을 확인해 주세요',
+      'UNCONFIRMED_AMOUNT' => '수량 차이에 해당하는 금액을 확인해 주세요',
+      'APPROVAL_SNAPSHOT_CONFLICT' => '이전 승인 내역과 현재 청구액을 확인해 주세요',
+      'INCOMPLETE_MATCH_FIELDS' || 'AMBIGUOUS_MATCH' || 'NO_MATCH' => '수령 기록이 어느 납품 건에 해당하는지 확인해 주세요',
+      'INVALID_RECEIVED_QTY' => '수령 기록에 적힌 수량을 확인해 주세요',
+      'SOURCE_LINE_CONFLICT' || 'INVALID_RECEIPT_CORRECTION' || 'MISSING_RECEIPT_ID' ||
+      'RECEIPT_ID_CONFLICT' || 'UNKNOWN_CONFIRMATION_SOURCE' => '납품 건에 연결된 수령 근거를 확인해 주세요',
+      _ => '정산 자료를 다시 확인해 주세요',
     };
+
+List<String> approvalReasons(Object? blockers) {
+  if (blockers is! List) return [];
+  const invoiceChecks = {'INVOICE_PERIOD_UNCONFIRMED', 'MISSING_BILLED_AMOUNT', 'MISSING_EFFECTIVE_INVOICE'};
+  final groupInvoice = blockers.toSet().containsAll(invoiceChecks);
+  return {
+    for (final code in blockers)
+      if (groupInvoice && invoiceChecks.contains(code))
+        '이번 정산에 적용할 청구서의 기간과 금액을 확인해 주세요'
+      else
+        blockerText(code),
+  }.toList();
+}
 
 // ------------------------------------------------------------------- status
 
@@ -365,10 +412,10 @@ class DemoBanner extends ConsumerWidget {
       decoration: BoxDecoration(
           color: Palette.infoBg, borderRadius: BorderRadius.circular(10)),
       child: Row(children: [
-        const Icon(Icons.science_outlined, size: 18, color: Palette.infoInk),
+        const Icon(Icons.science_outlined, size: inlineIconSize, color: Palette.infoInk),
         const SizedBox(width: 8),
         const Expanded(
-            child: Text('공개 A 예시 응답 · 서버 미연결',
+            child: Text('예시 자료를 보고 있습니다',
                 style: TextStyle(
                     fontSize: 13,
                     color: Palette.infoInk,
@@ -476,7 +523,7 @@ class InfoRow extends StatelessWidget {
                     if (onTap != null) ...[
                       const SizedBox(width: 4),
                       const Icon(Icons.chevron_right,
-                          size: 20, color: Palette.muted),
+                          size: inlineIconSize, color: Palette.muted),
                     ],
                   ])
                 : LayoutBuilder(
@@ -503,7 +550,7 @@ class InfoRow extends StatelessWidget {
                       if (onTap != null) ...[
                         const SizedBox(width: 4),
                         const Icon(Icons.chevron_right,
-                            size: 20, color: Palette.muted),
+                            size: inlineIconSize, color: Palette.muted),
                       ],
                     ]),
                   ),
@@ -552,7 +599,7 @@ Widget loaded<T>(AsyncValue<T> value, Widget Function(T) render,
       error: (e, _) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: Column(children: [
-          Text(e.toString(), style: Txt.body, textAlign: TextAlign.center),
+          Text(userErrorText(e), style: Txt.body, textAlign: TextAlign.center),
           if (retry != null) ...[
             const SizedBox(height: 12),
             OutlinedButton(onPressed: retry, child: const Text('다시 불러오기')),
@@ -568,7 +615,7 @@ void notify(BuildContext context, Object message) {
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message.toString())));
+    ..showSnackBar(SnackBar(content: Text(message is String ? message : userErrorText(message))));
 }
 
 /// Simple yes/no confirmation; returns true only on the confirm button.

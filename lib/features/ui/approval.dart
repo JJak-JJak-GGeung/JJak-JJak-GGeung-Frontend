@@ -260,7 +260,7 @@ class _Blockers extends StatelessWidget {
   final String periodId;
   @override
   Widget build(BuildContext context) {
-    final blockers = data['blockers'] is List ? data['blockers'] as List : const [];
+    final blockers = approvalReasons(data['blockers']);
     const ink = TextStyle(fontSize: 14, color: Palette.warnInk, height: 1.45);
     return TintCard(
       color: Palette.warnBg,
@@ -268,7 +268,7 @@ class _Blockers extends StatelessWidget {
         Text('아직 승인할 수 없습니다', style: ink.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         if (blockers.isEmpty) Text('· ${blockerText(null)}', style: ink),
-        for (final code in blockers) Text('· ${blockerText(code)}', style: ink),
+        for (final reason in blockers) Text(reason, style: ink),
         const SizedBox(height: 12),
         OutlinedButton(
             onPressed: () => context.go(periodRoute(periodId)),
