@@ -8,8 +8,9 @@ import 'package:jjakjjakggeung/api.dart';
 import 'package:jjakjjakggeung/features/ui/call_recording.dart';
 
 class CallBackend implements Backend {
-  CallBackend({this.fail});
+  CallBackend({this.fail, this.noStores = false});
   final ApiError? fail;
+  final bool noStores;
   final uploads = <(String, String)>[];
   final posts = <(String, Json)>[];
 
@@ -28,39 +29,40 @@ class CallBackend implements Backend {
 
   @override
   Future<dynamic> get(String path) async => switch (path) {
-    '/api/stores' => {
-      'stores': [
-        {'id': 'store', 'name': '점포'},
-      ],
-    },
-    '/api/suppliers?store_id=store' => {
-      'suppliers': [
-        {'id': 'supplier', 'name': '거래처'},
-      ],
-    },
-    '/api/periods?store_id=store&supplier_id=supplier' => {
-      'periods': [
-        {
-          'period_id': 'period',
-          'period_start': '2026-11-09',
-          'period_end': '2026-11-15',
-        },
-      ],
-    },
-    '/api/periods/period' => {
-      'input_revision': 7,
-      'items': [
-        {
-          'transaction_id': 'tx',
-          'delivery_date': '2026-11-13',
-          'item': '손질 장어',
-          'billed_qty': '40',
-          'unit': 'kg',
-        },
-      ],
-    },
-    _ => throw const ApiError(404),
-  };
+        '/api/stores' when noStores => {'stores': <Json>[]},
+        '/api/stores' => {
+            'stores': [
+              {'id': 'store', 'name': '점포'},
+            ],
+          },
+        '/api/suppliers?store_id=store' => {
+            'suppliers': [
+              {'id': 'supplier', 'name': '거래처'},
+            ],
+          },
+        '/api/periods?store_id=store&supplier_id=supplier' => {
+            'periods': [
+              {
+                'period_id': 'period',
+                'period_start': '2026-11-09',
+                'period_end': '2026-11-15',
+              },
+            ],
+          },
+        '/api/periods/period' => {
+            'input_revision': 7,
+            'items': [
+              {
+                'transaction_id': 'tx',
+                'delivery_date': '2026-11-13',
+                'item': '손질 장어',
+                'billed_qty': '40',
+                'unit': 'kg',
+              },
+            ],
+          },
+        _ => throw const ApiError(404),
+      };
 
   @override
   Future<Json> post(String path, Json body) async {
@@ -154,6 +156,15 @@ void main() {
     await tester.tap(save);
     await tester.pumpAndSettle();
     expect(api.posts.single.$2['confirmed_text'], '직접 적은 통화 내용');
+  });
+
+  testWidgets('점포가 없는 브라우저에서는 사진 등록을 먼저 안내한다', (tester) async {
+    final api = CallBackend(noStores: true);
+    await open(tester, api);
+    expect(find.textContaining('이 브라우저에 등록된 점포가 없습니다.'), findsOneWidget);
+    final save = find.widgetWithText(FilledButton, '통화 메모 저장');
+    await tester.ensureVisible(save);
+    expect(tester.widget<FilledButton>(save).onPressed, isNull);
   });
 
   test('녹음 파일 확장자를 서버가 아는 MIME으로 보낸다', () {

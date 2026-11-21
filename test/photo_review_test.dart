@@ -25,7 +25,7 @@ class TestBackend implements Backend {
     uploads.add(path);
     if (path.endsWith('/confirm')) {
       confirmed = fields;
-      return Future.value({'document_id': 'document-1'});
+      return Future.value({'document_id': 'document-1', 'period_id': 'period'});
     }
     return pending.future;
   }
@@ -90,9 +90,10 @@ void main() {
         },
       });
       await tester.pumpAndSettle();
-      expect(find.textContaining('샘플'), findsOneWidget);
+      expect(find.text('문서에서 읽은 거래처 · 샘플'), findsOneWidget);
       final qty = find.widgetWithText(TextFormField, '수량');
-      await tester.ensureVisible(qty);
+      await tester.scrollUntilVisible(qty, 180,
+          scrollable: find.byType(Scrollable).first);
       await tester.enterText(qty, '5');
       await tester.tap(find.text('원본 보기'));
       await tester.pumpAndSettle();
@@ -175,10 +176,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.uploads, ['/api/photo-previews']);
     final qty = find.widgetWithText(TextFormField, '수량');
-    await tester.ensureVisible(qty);
+    await tester.scrollUntilVisible(qty, 180,
+        scrollable: find.byType(Scrollable).first);
     await tester.enterText(qty, '3');
     final save = find.text('판독값 확인하고 저장');
-    await tester.ensureVisible(save);
+    await tester.scrollUntilVisible(save, 180,
+        scrollable: find.byType(Scrollable).first);
     await tester.tap(save);
     await tester.pumpAndSettle();
     final confirmed = jsonDecode(api.confirmed['review_json']!);
@@ -187,4 +190,71 @@ void main() {
     expect(destination, '/period/period/upload?document=document-1');
     expect(api.uploads, ['/api/photo-previews', '/api/photo-previews/confirm']);
   });
+  for (final firstStore in [false, true]) {
+    testWidgets('사진 한 장으로 새 거래처와 원본 확인 저장 firstStore=$firstStore',
+        (tester) async {
+      final api = TestBackend();
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      api.choices['/api/stores'] = {
+        'stores': firstStore
+            ? []
+            : [
+                {'id': 'shop', 'name': '우리 점포'}
+              ]
+      };
+      api.choices['/api/suppliers?store_id=shop'] = {
+        'suppliers': [
+          {'id': 'old', 'name': '기존 상사'}
+        ]
+      };
+      api.pending.complete({
+        'draft': {
+          'store_name_read': '우리 점포',
+          'supplier_name_read': '처음 수산',
+          'doc_date': '2026-11-13',
+          'doc_type': 'DELIVERY',
+          'lines': [
+            {'item': '새 품목', 'qty_read': '2', 'unit': 'kg'}
+          ]
+        },
+        'signature': 's'
+      });
+      await tester.pumpWidget(ProviderScope(
+          child: MaterialApp(
+              home: PhotoReview(
+                  PlatformFile(
+                      name: 'sample.png', size: bytes.length, bytes: bytes),
+                  api: api))));
+      await tester.pumpAndSettle();
+      expect(api.uploads, ['/api/photo-previews']);
+      final tradeDate = find.widgetWithText(TextFormField, '원본 거래일');
+      await tester.scrollUntilVisible(tradeDate, 180, scrollable: find.byType(Scrollable).first);
+      await tester.enterText(tradeDate, '2025-01-31');
+      final vendor = find.widgetWithText(TextFormField, '새 거래처 이름 (공급자)');
+      await tester.scrollUntilVisible(vendor, 180,
+          scrollable: find.byType(Scrollable).first);
+      await tester.enterText(vendor, '확인한 수산');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, '거래처 등록하고 원본 저장');
+      await tester.scrollUntilVisible(save, 180,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      final request = jsonDecode(api.confirmed['review_json']!);
+      expect(request[firstStore ? 'store_name' : 'store_id'],
+          firstStore ? '우리 점포' : 'shop');
+      expect(request['supplier_name'], '확인한 수산');
+      expect(request['week_start'], '2026-11-09');
+      expect(request['trade_date'], '2025-01-31');
+      expect(request['supplier_id'], isNull);
+      expect(
+          api.uploads, ['/api/photo-previews', '/api/photo-previews/confirm']);
+    });
+  }
 }

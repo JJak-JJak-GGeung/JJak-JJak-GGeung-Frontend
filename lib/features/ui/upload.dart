@@ -302,6 +302,9 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         const SizedBox(height: 10),
         const LinearProgressIndicator(),
       ],
+      for (final id in (data['pending_removals'] as List? ?? const []))
+        OutlinedButton(onPressed: busy ? null : () => _remove(id.toString()),
+          child: const Text('원본 파일 삭제 마무리')),
       if (current != null) ...[
         const SizedBox(height: 20),
         _documentCard(data, current),
@@ -332,6 +335,42 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
       if (doc['document_id']?.toString() == selectedId) return doc;
     }
     return lastUpload?['document_id']?.toString() == selectedId ? lastUpload : null;
+  }
+
+  Future<void> _remove(String id) => _run(() async {
+    try {
+      await backend.post('${periodPath(periodId)}/documents/${part(id)}/remove', {});
+      if (mounted) {
+        setState(() { selectedId = null; lastUpload = null; uploadKey = null; uploadSignature = null; });
+        notify(context, '자료를 삭제했습니다.');
+      }
+    } finally {
+      if (mounted) refreshPeriod(ref, periodId);
+    }
+  });
+
+  Future<void> _askRemove(Json doc) async {
+    final accepted = await showDialog<bool>(context: context, builder: (dialog) =>
+      AlertDialog(title: const Text('올린 자료를 삭제할까요?'),
+        content: Text('${doc['filename'] ?? '이 파일'}의 판독 행과 원본을 삭제합니다. 승인이나 확인에 쓰인 자료는 보존됩니다.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.pop(dialog, true), child: const Text('삭제')),
+        ]));
+    if (accepted == true && mounted) await _remove(doc['document_id'].toString());
+  }
+
+  Future<void> _editTradeDate(Json doc) async {
+    final initial = DateTime.tryParse((doc['trade_date'] ?? doc['doc_date'] ?? '').toString());
+    final chosen = await showDatePicker(context: context, initialDate: initial != null && initial.year >= 1900 && initial.year < 2200 ? initial : DateTime.now(),
+      firstDate: DateTime(1900), lastDate: DateTime(2200), initialEntryMode: DatePickerEntryMode.input,
+      helpText: '원본에서 확인한 거래일', confirmText: '거래일 저장');
+    if (chosen == null || !mounted) return;
+    await _run(() async {
+      await backend.post('${periodPath(periodId)}/documents/${part(doc['document_id'])}/trade-date',
+        {'expected': doc['trade_date'], 'trade_date': chosen.toIso8601String().split('T').first});
+      if (mounted) {refreshPeriod(ref, periodId); notify(context, '거래일을 저장했습니다.');}
+    });
   }
 
   Widget _documentCard(Json data, Json doc) {
@@ -365,6 +404,15 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
           if (doc['doc_no'] != null) doc['doc_no'].toString(),
         ].join(' · '), style: Txt.label),
         const SizedBox(height: 12),
+        Text('거래일 · ${doc['trade_date'] ?? '미확인'}', style: Txt.body),
+        if (doc['doc_date'] != null) Text('문서일 · ${doc['doc_date']}', style: Txt.label),
+        if (doc['issued_on'] != null) Text('작성·발행일 · ${doc['issued_on']}', style: Txt.label),
+        if (doc['quoted_on'] != null) Text('견적일 · ${doc['quoted_on']}', style: Txt.label),
+        if (doc['source_date_text'] != null) Text('원본 날짜 표기 · ${doc['source_date_text']}', style: Txt.label),
+        if (!demo && doc['source_mode'] == 'FILE') Wrap(children: [
+          TextButton(onPressed: busy ? null : () => _editTradeDate(doc), child: const Text('거래일 수정')),
+          TextButton(onPressed: busy ? null : () => _askRemove(doc), child: const Text('자료 삭제')),
+        ]),
         StatusChip(Status(_extractionText(doc), failed ? Tone.error : Tone.neutral)),
         if (mismatch != null) ...[
           const SizedBox(height: 12),
@@ -394,12 +442,14 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
           const SizedBox(height: 8),
           for (final line in lines) ...[
             InfoRow(
-              _lineTitle(line),
+              line['delivery_date'] == null ? '행 납품일 미기재 · ${line['delivery_no'] ?? '번호 미확인'}' : _lineTitle(line),
               qtyText(line, 'qty_read'),
               caption: [
                 if (line['item'] != null) line['item'].toString(),
                 '단가 ${won(line['unit_price_corrected'] ?? line['unit_price_read'])}',
                 '금액 ${won(line['amount_corrected'] ?? line['amount_read'])}',
+                if (line['tax_amount_read'] != null) '세액 ${won(line['tax_amount_read'])}',
+                if (line['line_date_text'] != null) '품목 날짜 ${line['line_date_text']}',
                 locationText(line['source_location']),
               ].join(' · '),
               onTap: () => showOriginal(context, _lineRef(doc, line)),

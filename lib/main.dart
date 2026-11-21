@@ -1,17 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'browser_session_native.dart'
+    if (dart.library.js_interop) 'browser_session_web.dart';
 import 'features/ui/settlement_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  const url = String.fromEnvironment('SUPABASE_URL');
-  const key = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
-  if (!demo && url.isNotEmpty && key.isNotEmpty) {
-    await Supabase.initialize(url: url, publishableKey: key);
-    final client = Supabase.instance.client;
-    accessToken = () => client.auth.currentSession?.accessToken;
+  if (!demo) {
+    try {
+      final credential = await browserSession();
+      accessToken = () => credential;
+    } catch (_) {
+      runApp(const MaterialApp(
+          home: Scaffold(
+              body: Center(
+        child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+                '이 브라우저에 자료를 다시 열 수 있는 정보를 저장할 수 없어요. 사이트 데이터 저장을 허용하고 새로고침해 주세요.')),
+      ))));
+      return;
+    }
   }
   runApp(const ProviderScope(child: SettlementApp()));
 }

@@ -1,12 +1,15 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'shared.dart';
 
+const _newChoice = '__new__';
 const photoTypes = ['DELIVERY', 'RECEIPT', 'INVOICE', 'CORRECTED_INVOICE'];
 
 /// The file stays available on this page even during a failed or retried reading.
@@ -26,11 +29,41 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   bool reading = true, saving = false, loadingChoices = false;
   String keyForSave = requestKey();
   String? lastPayload;
+  String shopName = '', vendorName = '';
+  DateTime? week;
+  String tradeDate = '';
+  String? proposedDate(Json draft) => draft['trade_date'] ?? draft['doc_date'] ?? draft['issued_on'] ?? draft['quoted_on'];
+  bool storesLoaded = false, suppliersLoaded = false, periodsLoaded = false;
+
+  String day(DateTime d) => d.toIso8601String().split('T').first;
+  DateTime monday(DateTime d) =>
+      DateTime(d.year, d.month, d.day - (d.weekday - 1));
+  bool get ready =>
+      !loadingChoices &&
+      storesLoaded &&
+      suppliersLoaded &&
+      periodsLoaded &&
+      store != null &&
+      supplier != null &&
+      (store != _newChoice || shopName.trim().isNotEmpty) &&
+      (supplier != _newChoice || vendorName.trim().isNotEmpty) &&
+      period != null &&
+      (period != _newChoice || week != null);
+
+  Future<void> chooseWeek() async {
+    final picked = await showDatePicker(
+        context: context,
+        initialDate: week ?? DateTime.now(),
+        firstDate: DateTime(1900),
+        lastDate: DateTime(2200));
+    if (picked != null && mounted) setState(() => week = monday(picked));
+  }
+
   String get mime => switch (widget.file.extension?.toLowerCase()) {
-    'jpeg' || 'jpg' => 'image/jpeg',
-    'webp' => 'image/webp',
-    _ => 'image/png',
-  };
+        'jpeg' || 'jpg' => 'image/jpeg',
+        'webp' => 'image/webp',
+        _ => 'image/png',
+      };
 
   @override
   void initState() {
@@ -57,6 +90,12 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         lines = objects(draft['lines'])
             .map((l) => Map<String, dynamic>.from(l))
             .toList();
+        shopName = draft['store_name_read']?.toString() ?? '';
+        vendorName = draft['supplier_name_read']?.toString() ?? '';
+        tradeDate = draft['trade_date']?.toString() ?? '';
+        final date = DateTime.tryParse(proposedDate(draft) ?? '');
+        if (date != null && date.year >= 1900 && date.year < 2200)
+          week = monday(date);
         type = draft['doc_type'] as String?;
         reading = false;
       });
@@ -76,8 +115,18 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
     try {
       final shops = records(await api.get('/api/stores'), 'stores');
       if (!mounted) return;
-      setState(() => stores = shops);
+      setState(() {
+        stores = shops;
+        storesLoaded = true;
+      });
+      if (shops.isEmpty) await _store(_newChoice);
       if (shops.length == 1) await _store(shops.single['id']);
+      if (shops.length > 1 && shopName.trim().isNotEmpty) {
+        final matches = shops
+            .where((s) => s['name']?.toString().trim() == shopName.trim())
+            .toList();
+        if (matches.length == 1) await _store(matches.single['id']);
+      }
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
     } finally {
@@ -91,16 +140,27 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       supplier = period = null;
       suppliers = [];
       periods = [];
+      suppliersLoaded = periodsLoaded = false;
       loadingChoices = true;
       error = null;
     });
     try {
+      if (id == _newChoice) {
+        setState(() {
+          supplier = period = _newChoice;
+          suppliersLoaded = periodsLoaded = true;
+        });
+        return;
+      }
       final list = records(
         await api.get('/api/suppliers?store_id=${part(id)}'),
         'suppliers',
       );
       if (!mounted || store != id) return;
-      setState(() => suppliers = list);
+      setState(() {
+        suppliers = list;
+        suppliersLoaded = true;
+      });
       String norm(Object? v) =>
           (v ?? '').toString().replaceAll(RegExp(r'\s+'), '');
       final name = norm(object(preview?['draft'])['supplier_name_read']);
@@ -108,6 +168,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
           .where((s) => name.isNotEmpty && norm(s['name']) == name)
           .toList();
       if (matches.length == 1) await _supplier(matches.single['id']);
+      if (matches.isEmpty) await _supplier(_newChoice);
     } catch (e) {
       if (mounted && store == id) setState(() => error = e.toString());
     } finally {
@@ -118,12 +179,20 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   Future<void> _supplier(String id) async {
     setState(() {
       supplier = id;
+      periodsLoaded = false;
       period = null;
       periods = [];
       error = null;
       loadingChoices = true;
     });
     try {
+      if (id == _newChoice) {
+        setState(() {
+          period = _newChoice;
+          periodsLoaded = true;
+        });
+        return;
+      }
       final list = records(
         await api.get(
           '/api/periods?store_id=${part(store)}&supplier_id=${part(id)}',
@@ -131,7 +200,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         'periods',
       );
       if (!mounted || supplier != id) return;
-      final date = object(preview?['draft'])['doc_date']?.toString();
+      final date = proposedDate(object(preview?['draft']));
       final matches = list
           .where(
             (p) =>
@@ -142,6 +211,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
           .toList();
       setState(() {
         periods = list;
+        periodsLoaded = true;
+        if (matches.isEmpty) period = _newChoice;
         if (matches.length == 1) period = matches.single['period_id'];
       });
     } catch (e) {
@@ -152,24 +223,30 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   }
 
   void _original() => showDialog<void>(
-    context: context,
-    builder: (ctx) => Dialog.fullscreen(
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('원본 사진'),
-          leading: CloseButton(onPressed: () => Navigator.pop(ctx)),
-        ),
-        body: Center(
-          child: InteractiveViewer(
-            maxScale: 8,
-            child: Image.memory(widget.file.bytes!, fit: BoxFit.contain),
+        context: context,
+        builder: (ctx) => Dialog.fullscreen(
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('원본 사진'),
+              leading: CloseButton(onPressed: () => Navigator.pop(ctx)),
+            ),
+            body: Center(
+              child: InteractiveViewer(
+                maxScale: 8,
+                child: Image.memory(widget.file.bytes!, fit: BoxFit.contain),
+              ),
+            ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 
   Future<void> _save() async {
+    final entered = tradeDate.trim();
+    final parsed = DateTime.tryParse(entered);
+    if (entered.isNotEmpty && (parsed == null || day(parsed) != entered)) {
+      setState(() => error = '거래일을 연도-월-일 형식으로 확인해 주세요.');
+      return;
+    }
     final edits = <Json>[];
     for (final l in lines) {
       String? val(String k) {
@@ -197,9 +274,20 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       });
     }
     final payload = jsonEncode({
-      'store_id': store,
-      'supplier_id': supplier,
-      'period_id': period,
+      if (store == _newChoice)
+        'store_name': shopName.trim()
+      else
+        'store_id': store,
+      if (supplier == _newChoice)
+        'supplier_name': vendorName.trim()
+      else
+        'supplier_id': supplier,
+      if (period == _newChoice)
+        'week_start': day(week!)
+      else
+        'period_id': period,
+      if (entered != (object(preview?['draft'])['trade_date'] ?? ''))
+        'trade_date': entered.isEmpty ? null : entered,
       'doc_type': type,
       'lines': edits,
     });
@@ -226,13 +314,18 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       );
       if (!mounted) return;
       ref.read(pickedNames.notifier).state = {
-        'store': stores.firstWhere((s) => s['id'] == store)['name'],
-        'supplier': suppliers.firstWhere((s) => s['id'] == supplier)['name'],
+        'store': store == _newChoice
+            ? shopName.trim()
+            : stores.firstWhere((s) => s['id'] == store)['name'],
+        'supplier': supplier == _newChoice
+            ? vendorName.trim()
+            : suppliers.firstWhere((s) => s['id'] == supplier)['name'],
       };
-      refreshPeriod(ref, period!);
+      final savedPeriod = (result['period_id'] ?? period) as String;
+      refreshPeriod(ref, savedPeriod);
       Navigator.pop(
         context,
-        '${uploadRoute(period!)}?document=${part(result['document_id'])}',
+        '${uploadRoute(savedPeriod)}?document=${part(result['document_id'])}',
       );
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
@@ -246,33 +339,34 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
     String? value,
     Map<String, String> options,
     void Function(String) change,
-  ) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: DropdownButtonFormField<String>(
-      key: ValueKey([label, value, options.keys.join(',')].join('|')),
-      initialValue: value,
-      isExpanded: true,
-      decoration: InputDecoration(labelText: label),
-      items: options.entries
-          .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
-          .toList(),
-      onChanged: saving || loadingChoices
-          ? null
-          : (v) {
-              if (v != null) change(v);
-            },
-    ),
-  );
+  ) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: DropdownButtonFormField<String>(
+          key: ValueKey([label, value, options.keys.join(',')].join('|')),
+          initialValue: value,
+          isExpanded: true,
+          decoration: InputDecoration(labelText: label),
+          items: options.entries
+              .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+              .toList(),
+          onChanged: saving || loadingChoices
+              ? null
+              : (v) {
+                  if (v != null) change(v);
+                },
+        ),
+      );
 
   Widget _field(Json line, String key, String label) => Padding(
-    padding: const EdgeInsets.only(top: 8),
-    child: TextFormField(
-      initialValue: line[key]?.toString() ?? '',
-      enabled: !saving,
-      decoration: InputDecoration(labelText: label),
-      onChanged: (v) => line[key] = v,
-    ),
-  );
+        padding: const EdgeInsets.only(top: 8),
+        child: TextFormField(
+          initialValue: line[key]?.toString() ?? '',
+          enabled: !saving,
+          decoration: InputDecoration(labelText: label),
+          onChanged: (v) => line[key] = v,
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -296,25 +390,70 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
             style: Txt.body,
           ),
           const SizedBox(height: 12),
-          if (stores.isEmpty && !loadingChoices)
+          if (draft['source_date_text'] != null) Text('원본 날짜 표기 · ${draft['source_date_text']}'),
+          if (draft['doc_date'] != null) Text('문서일 · ${draft['doc_date']}'),
+          if (draft['issued_on'] != null) Text('작성·발행일 · ${draft['issued_on']}'),
+          if (draft['quoted_on'] != null) Text('견적일 · ${draft['quoted_on']}'),
+          TextFormField(initialValue: tradeDate, enabled: !saving,
+            decoration: const InputDecoration(labelText: '원본 거래일', hintText: 'YYYY-MM-DD', helperText: '거래일이 없으면 비워 두세요. 정산 기간은 별도로 선택합니다.'),
+            onChanged: (value) => tradeDate = value),
+          if (!storesLoaded && !loadingChoices)
             TextButton(
               onPressed: _loadStores,
               child: const Text('점포 목록 다시 불러오기'),
             ),
-          _choice('점포', store, {
-            for (final s in stores) '${s['id']}': '${s['name']}',
-          }, _store),
-          _choice('저장할 거래처', supplier, {
-            for (final s in suppliers) '${s['id']}': '${s['name']}',
-          }, _supplier),
-          _choice('정산 기간', period, {
-            for (final p in periods) '${p['period_id']}': '${p['label']}',
-          }, (v) => setState(() => period = v)),
-          _choice('문서 종류', type, {
-            for (final t in photoTypes) t: docTypeText(t),
-          }, (v) => setState(() => type = v)),
-          if (supplier != null && periods.isEmpty && !loadingChoices)
-            const Text('이 거래처에 열려 있는 정산 기간이 없습니다.'),
+          _choice(
+              '내 점포',
+              store,
+              {
+                if (storesLoaded) _newChoice: '새 점포 등록',
+                for (final s in stores) '${s['id']}': '${s['name']}',
+              },
+              _store),
+          if (store == _newChoice)
+            TextFormField(
+                initialValue: shopName,
+                enabled: !saving,
+                maxLength: 150,
+                decoration:
+                    const InputDecoration(labelText: '내 점포 이름 (공급받는 곳)'),
+                onChanged: (v) => setState(() => shopName = v)),
+          _choice(
+              '저장할 거래처',
+              supplier,
+              {
+                if (suppliersLoaded) _newChoice: '새 거래처 등록',
+                for (final s in suppliers) '${s['id']}': '${s['name']}',
+              },
+              _supplier),
+          if (supplier == _newChoice)
+            TextFormField(
+                initialValue: vendorName,
+                enabled: !saving,
+                maxLength: 150,
+                decoration: const InputDecoration(labelText: '새 거래처 이름 (공급자)'),
+                onChanged: (v) => setState(() => vendorName = v)),
+          _choice(
+              '정산 기간',
+              period,
+              {
+                if (periodsLoaded) _newChoice: '새 정산 주',
+                for (final p in periods) '${p['period_id']}': '${p['label']}',
+              },
+              (v) => setState(() => period = v)),
+          _choice(
+              '문서 종류',
+              type,
+              {
+                for (final t in photoTypes) t: docTypeText(t),
+              },
+              (v) => setState(() => type = v)),
+          if (period == _newChoice)
+            OutlinedButton(
+                onPressed: saving ? null : chooseWeek,
+                child: Text(week == null
+                    ? '자료를 보관할 정산 주 선택'
+                    : '${day(week!)} ~ ${day(week!.add(const Duration(days: 6)))} · 주 변경')),
           if (loadingChoices) const LinearProgressIndicator(),
           for (final (i, l) in lines.indexed)
             Card(
@@ -334,6 +473,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
                     ),
                     _field(l, 'unit_price_read', '단가 (원)'),
                     _field(l, 'amount_read', '행 금액 (원)'),
+                    if (l['tax_amount_read'] != null) Text('행 세액 · ${won(l['tax_amount_read'])}'),
+                    if (l['line_date_text'] != null) Text('품목 날짜 표기 · ${l['line_date_text']}'),
                   ],
                 ),
               ),
@@ -341,14 +482,14 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
           const SizedBox(height: 12),
           FilledButton(
             onPressed:
-                reading ||
-                    saving ||
-                    period == null ||
-                    type == null ||
-                    lines.isEmpty
-                ? null
-                : _save,
-            child: Text(saving ? '저장 중' : '판독값 확인하고 저장'),
+                reading || saving || !ready || type == null || lines.isEmpty
+                    ? null
+                    : _save,
+            child: Text(saving
+                ? '저장 중'
+                : supplier == _newChoice
+                    ? '거래처 등록하고 원본 저장'
+                    : '판독값 확인하고 저장'),
           ),
         ],
       ],
@@ -388,14 +529,62 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
 }
 
 Future<void> startPhotoReview(BuildContext context) async {
-  final picked = await FilePicker.platform.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: ['png', 'jpg', 'jpeg', 'webp'],
-    withData: true,
-  );
-  if (!context.mounted || picked == null || picked.files.single.bytes == null)
+  late final PlatformFile file;
+  try {
+    if ([TargetPlatform.android, TargetPlatform.iOS]
+        .contains(defaultTargetPlatform)) {
+      final source = await showModalBottomSheet<ImageSource>(
+          context: context,
+          builder: (ctx) => SafeArea(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                ListTile(
+                    leading: const Icon(Icons.photo_camera),
+                    title: const Text('사진 촬영'),
+                    onTap: () => Navigator.pop(ctx, ImageSource.camera)),
+                ListTile(
+                    leading: const Icon(Icons.photo_library),
+                    title: const Text('앨범에서 선택'),
+                    onTap: () => Navigator.pop(ctx, ImageSource.gallery))
+              ])));
+      if (source == null) return;
+      final photo = await ImagePicker()
+          .pickImage(source: source, preferredCameraDevice: CameraDevice.rear);
+      if (photo == null) return;
+      final length = await photo.length();
+      if (length > 10485760) {
+        if (context.mounted) notify(context, '10MB 이하의 사진을 선택해 주세요.');
+        return;
+      }
+      final bytes = await photo.readAsBytes();
+      final ext = bytes.length >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8
+          ? 'jpg'
+          : bytes.length >= 8 && bytes[0] == 0x89 && bytes[1] == 0x50
+              ? 'png'
+              : bytes.length >= 12 &&
+                      ascii.decode(bytes.sublist(8, 12), allowInvalid: true) ==
+                          'WEBP'
+                  ? 'webp'
+                  : null;
+      if (ext == null) {
+        if (context.mounted) notify(context, 'PNG·JPEG·WebP 사진을 선택해 주세요.');
+        return;
+      }
+      final name = photo.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
+      file = PlatformFile(name: '$name.$ext', size: length, bytes: bytes);
+    } else {
+      final picked = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['png', 'jpg', 'jpeg', 'webp'],
+          withData: true);
+      if (picked == null || picked.files.single.bytes == null) return;
+      file = picked.files.single;
+    }
+  } catch (_) {
+    if (context.mounted)
+      notify(context, '사진을 열 수 없습니다. 카메라 권한을 확인하거나 앨범에서 선택해 주세요.');
     return;
-  final file = picked.files.single;
+  }
+  if (!context.mounted) return;
   if (file.size > 10485760) {
     notify(context, '10MB 이하의 사진을 선택해 주세요.');
     return;

@@ -16,7 +16,7 @@ const apiBase = String.fromEnvironment('API_BASE_URL');
 /// the in-memory [DemoBackend] and show an "예시 응답" banner.
 const demo = apiBase == '';
 
-/// Supplies the Supabase access token when a session exists.
+/// Supplies the credential retained by this browser profile.
 String? Function() accessToken = () => null;
 
 final DemoBackend? demoBackend = demo ? DemoBackend() : null;
