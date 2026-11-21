@@ -250,7 +250,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
     padding: const EdgeInsets.only(bottom: 12),
     child: DropdownButtonFormField<String>(
       key: ValueKey([label, value, options.keys.join(',')].join('|')),
-      value: value,
+      initialValue: value,
       isExpanded: true,
       decoration: InputDecoration(labelText: label),
       items: options.entries
