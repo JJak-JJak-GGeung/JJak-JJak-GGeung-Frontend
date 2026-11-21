@@ -1,11 +1,28 @@
 # 짝짜꿍 Frontend
 
-박승원이 Flutter Web·Riverpod·GoRouter 화면을 구현합니다. 이 저장소 루트가 Flutter 프로젝트이고 화면 코드는 `lib/`, 패키지 명세는 `pubspec.yaml`입니다. 개발 브랜치는 `screen-photo`입니다. 사진 판독 Python 코드는 Backend 저장소의 같은 이름 브랜치에 둡니다.
+짝짜꿍은 식당 점주가 납품명세서·수령기록·청구서 사진을 모아 거래별 수량과 청구 금액을 비교하고, 원본 근거를 확인해 주간 정산을 승인하는 서비스입니다.
 
-## 협업 순서
+## 심사위원 시연 3단계
 
-역할 브랜치에서 변경하고 이 저장소의 `main`을 대상으로 PR을 엽니다. PR에 직접 확인한 동작과 결과, 다음 담당자가 받을 값을 적습니다. 우영이 검토·병합하고 구본혁이 병합된 버전을 배포합니다. 팀 배포팩의 `frontend/`, `backend/`는 해당 저장소 루트를 뜻합니다. DB 변경은 Database 저장소로 보냅니다.
+[배포 웹 열기](https://jjak-jjak-ggeung-frontend.vercel.app/) · [A01–A05 예시 사진 ZIP 다운로드](https://raw.githubusercontent.com/JJak-JJak-GGeung/JJak-JJak-GGeung-Frontend/b034bdd713daa5cc62279d6e2ad1641da661c847/docs/demo/A01-A05-demo.zip)
 
-[팀 노션과 역할 카드](https://tasteful-fight-7cd.notion.site/41d58907758380bdb941e7781b7096af) · [Database](https://github.com/JJak-JJak-GGeung/JJak-JJak-GGeung-Database) · [Backend](https://github.com/JJak-JJak-GGeung/JJak-JJak-GGeung-Backend)
+1. **첫 사진으로 시작합니다.** ZIP을 풀고 배포 웹 오른쪽 아래 **+**를 눌러 A01을 선택합니다. 첫 방문에는 등록된 점포가 없습니다. 판독 결과를 원본과 대조하고 **가온 장어식당**을 점포, **달마루 수산**을 거래처, **2026-11-09~11-15**를 정산 주로 등록해 저장합니다.
+2. **주간 자료를 모아 대조합니다.** 같은 점포·거래처·정산 주에 A02(납품명세), A03(수령기록), A04(주간청구서)를 한 장씩 올립니다. 저장 전 문서 유형과 판독값을 확인하고, A03의 수령 두 행을 해당 납품 DL-A091·DL-A131에 연결해 확인합니다. 예시의 최초 청구는 **100kg·200만 원**, 확인된 수령은 **96kg**, 차이는 **4kg·8만 원**입니다.
+3. **수정본을 확인하고 승인합니다.** A05를 수정청구서로 올려 A04를 대체하는 문서로 확인합니다. 원본의 수량 합의 문구와 **192만 원**을 확인한 뒤 승인하고 **승인 내역**에서 열어봅니다.
 
-공개 A 자료는 팀 배포팩에서 사용합니다. 로컬 환경 파일·인증 키·B 입력과 정답표는 팀 저장소 밖에 보관합니다.
+세 단계는 같은 기기와 브라우저 프로필에서 이어서 진행합니다. 첫 화면의 **합성 명세표로 연습**으로 사진 등록 화면을 먼저 체험할 수도 있습니다.
+
+## 화면 구조
+
+| 경로 | 역할 |
+| --- | --- |
+| [`lib/features/ui/`](lib/features/ui/) | 점포 등록, 사진 판독 검수, 거래별 대조, 주간 정산과 승인 내역 |
+| [`lib/api.dart`](lib/api.dart) | 업무 API 연동 |
+| [`web/`](web/) · [`android/`](android/) | Flutter 웹·Android 진입 설정 |
+| [`test/`](test/) | 프론트엔드 테스트 |
+
+[제출용 서비스 소개](docs/demo/project-introduction.md)
+
+## 저장소
+
+[Frontend](https://github.com/JJak-JJak-GGeung/JJak-JJak-GGeung-Frontend) · [Backend](https://github.com/JJak-JJak-GGeung/JJak-JJak-GGeung-Backend) · [Database](https://github.com/JJak-JJak-GGeung/JJak-JJak-GGeung-Database)
