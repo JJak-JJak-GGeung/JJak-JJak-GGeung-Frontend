@@ -512,6 +512,19 @@ class DemoBackend implements Backend {
         if (replay != null) return _copy(replay);
         final segments = Uri.parse(path).pathSegments;
         Json result;
+        if (path == '/api/periods') {
+          // The example data covers one week only.
+          if (body['week_start'] != '2026-11-09') {
+            throw const ApiError(422, 'DEMO_SAMPLE_WEEK_ONLY');
+          }
+          return {
+            'period_id': periodId,
+            'label': '2026-11-09 ~ 2026-11-15',
+            'period_start': '2026-11-09',
+            'period_end': '2026-11-15',
+            'created': false,
+          };
+        }
         if (segments.length == 4 && segments[3] == 'confirmations') {
           _expect(body);
           result = _confirm(body);
