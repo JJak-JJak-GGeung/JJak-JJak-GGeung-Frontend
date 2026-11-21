@@ -81,7 +81,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   bool showDateError = false;
   final amountInputs = <String, String>{};
   String? proposedDate(Json draft) =>
-      draft['trade_date'] ?? draft['doc_date'] ?? draft['issued_on'] ?? draft['quoted_on'];
+      draft['period_start'] ?? draft['trade_date'] ?? draft['doc_date'] ??
+      draft['issued_on'] ?? draft['quoted_on'];
   bool storesLoaded = false, suppliersLoaded = false, periodsLoaded = false;
   String? kept(String key) => widget.existing?[key]?.toString();
 
@@ -258,13 +259,18 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         'periods',
       );
       if (!mounted || supplier != id) return;
-      final date = proposedDate(object(preview?['draft']));
+      final draft = object(preview?['draft']);
+      final date = proposedDate(draft);
+      final periodEnd = draft['period_start'] == null
+          ? date
+          : draft['period_end'] as String? ?? date;
       final matches = list
           .where(
             (p) =>
                 date != null &&
                 date.compareTo('${p['period_start']}') >= 0 &&
-                date.compareTo('${p['period_end']}') <= 0,
+                date.compareTo('${p['period_end']}') <= 0 &&
+                (periodEnd ?? date).compareTo('${p['period_end']}') <= 0,
           )
           .toList();
       final keepPeriod = kept('period_id');
