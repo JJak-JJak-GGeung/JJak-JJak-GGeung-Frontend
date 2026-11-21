@@ -5,4 +5,9 @@ git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutt
 export PATH="/tmp/jjak-flutter/bin:$PATH"
 flutter config --no-analytics
 flutter pub get
-flutter build web --release --dart-define=API_BASE_URL=https://jjak-jjak-ggeung-a1.rkrbhm0ryexya.ap-northeast-2.cs.amazonlightsail.com
+: "${SUPABASE_URL:?Set SUPABASE_URL in the deployment environment}"
+: "${SUPABASE_PUBLISHABLE_KEY:?Set SUPABASE_PUBLISHABLE_KEY in the deployment environment}"
+flutter build web --release \
+  --dart-define=API_BASE_URL=https://jjak-jjak-ggeung-a1.rkrbhm0ryexya.ap-northeast-2.cs.amazonlightsail.com \
+  --dart-define="SUPABASE_URL=$SUPABASE_URL" \
+  --dart-define="SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY"
