@@ -69,8 +69,7 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = objects(data['items']);
-    final blockers =
-        data['blockers'] is List ? data['blockers'] as List : const [];
+    final blockers = approvalReasons(data['blockers']);
     final due = paymentDue(data);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -125,8 +124,8 @@ class _Body extends ConsumerWidget {
                 style:
                     Txt.value.copyWith(fontSize: 14, color: Palette.warnInk)),
             const SizedBox(height: 6),
-            for (final code in blockers)
-              Text('· ${blockerText(code)}',
+            for (final reason in blockers)
+              Text(reason,
                   style: Txt.body.copyWith(color: Palette.warnInk)),
           ]),
         ),
