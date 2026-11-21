@@ -17,3 +17,6 @@ answer-key*
 .flutter-plugins*
 build/
 .vercel/
+
+.vercel/
+.env.local
