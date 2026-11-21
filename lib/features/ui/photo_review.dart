@@ -299,14 +299,25 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         return t.isEmpty ? null : t;
       }
 
-      final amount = val('amount_read');
+      final amounts = {
+        for (final key in [
+          'amount_read',
+          'tax_amount_read',
+          'supply_amount_read',
+          'discount_amount_read',
+          'line_total_read',
+        ]) key: val(key),
+      };
+      final integer = RegExp(r'^-?\d{1,16}$');
       final decimal = RegExp(r'^-?\d{1,16}(\.\d{1,8})?$');
       if (val('item') == null ||
           [
             val('qty_read'),
             val('unit_price_read'),
           ].any((v) => v != null && !decimal.hasMatch(v)) ||
-          (amount != null && !RegExp(r'^-?\d{1,16}$').hasMatch(amount))) {
+          amounts.values.any((v) =>
+              v != null &&
+              (!integer.hasMatch(v) || int.parse(v).abs() > 9007199254740991))) {
         setState(() => error = '품목명과 숫자 형식을 확인해 주세요. 모르는 수량·가격은 비워 둘 수 있습니다.');
         return;
       }
@@ -315,7 +326,10 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         'unit': val('unit'),
         'qty_read': val('qty_read'),
         'unit_price_read': val('unit_price_read'),
-        'amount_read': amount == null ? null : int.parse(amount),
+        for (final key in ['spec', 'item_code', 'origin', 'lot_no', 'line_note'])
+          key: val(key),
+        for (final entry in amounts.entries)
+          entry.key: entry.value == null ? null : int.parse(entry.value!),
       });
     }
     final payload = jsonEncode({
@@ -537,7 +551,21 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
                     ),
                     _field(l, 'unit_price_read', '단가 (원)'),
                     _field(l, 'amount_read', '행 금액 (원)'),
-                    if (l['tax_amount_read'] != null) Text('행 세액 · ${won(l['tax_amount_read'])}'),
+                    ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      title: const Text('품목 상세 정보'),
+                      children: [
+                        _field(l, 'spec', '규격'),
+                        _field(l, 'item_code', '품목코드'),
+                        _field(l, 'origin', '원산지'),
+                        _field(l, 'lot_no', '로트번호'),
+                        _field(l, 'supply_amount_read', '공급가액 (원)'),
+                        _field(l, 'discount_amount_read', '할인액 (원)'),
+                        _field(l, 'tax_amount_read', '세액 (원)'),
+                        _field(l, 'line_total_read', '합계금액 (원)'),
+                        _field(l, 'line_note', '비고'),
+                      ],
+                    ),
                     if (l['line_date_text'] != null) Text('품목 날짜 표기 · ${l['line_date_text']}'),
                   ],
                 ),

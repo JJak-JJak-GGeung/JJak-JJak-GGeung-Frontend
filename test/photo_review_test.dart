@@ -154,7 +154,15 @@ void main() {
         'deposit_amount': 25,
         'tax_total': null,
         'lines': [
-          {'item': '채소', 'qty_read': '4', 'unit': 'kg'}
+          {
+            'item': '채소',
+            'qty_read': '4',
+            'unit': 'kg',
+            'spec': '1kg',
+            'item_code': '0012',
+            'discount_amount_read': 0,
+            'line_total_read': 9900,
+          }
         ]
       }
     });
@@ -189,6 +197,20 @@ void main() {
     await tester.enterText(qty, '3');
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
+    final details = find.text('품목 상세 정보');
+    await tester.scrollUntilVisible(details, 180,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(details);
+    await tester.pumpAndSettle();
+    await tester.tap(details);
+    await tester.pumpAndSettle();
+    final spec = find.widgetWithText(TextFormField, '규격');
+    await tester.scrollUntilVisible(spec, 180,
+        scrollable: find.byType(Scrollable).first);
+    await tester.enterText(spec, '2kg');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
     final save = find.text('판독값 확인하고 저장');
     await tester.scrollUntilVisible(save, 180,
         scrollable: find.byType(Scrollable).first);
@@ -199,6 +221,10 @@ void main() {
     final confirmed = jsonDecode(api.confirmed['review_json']!);
     expect(confirmed['lines'][0]['qty_read'], '3');
     expect(confirmed['statement_amounts'], {'deposit_amount': null, 'tax_total': 0});
+    expect(confirmed['lines'][0]['spec'], '2kg');
+    expect(confirmed['lines'][0]['item_code'], '0012');
+    expect(confirmed['lines'][0]['discount_amount_read'], 0);
+    expect(confirmed['lines'][0]['line_total_read'], 9900);
     expect(confirmed['supplier_id'], 'supplier');
     expect(destination, '/period/period/upload?document=document-1');
     expect(api.uploads, ['/api/photo-previews', '/api/photo-previews/confirm']);
@@ -368,7 +394,8 @@ void main() {
         expect(api.uploads, ['/api/photo-previews']);
       }
       final tradeDate = find.widgetWithText(TextFormField, '원본 거래일');
-      await tester.scrollUntilVisible(tradeDate, 180, scrollable: find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(tradeDate, firstStore ? -180 : 180,
+          scrollable: find.byType(Scrollable).first);
       await tester.enterText(tradeDate, '2025-01-31');
       final vendor = find.widgetWithText(TextFormField, '새 거래처 이름 (공급자)');
       await tester.scrollUntilVisible(vendor, 180,
