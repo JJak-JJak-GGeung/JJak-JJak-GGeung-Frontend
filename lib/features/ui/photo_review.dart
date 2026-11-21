@@ -80,6 +80,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   String tradeDate = '';
   bool showDateError = false;
   final amountInputs = <String, String>{};
+  bool showEmptyAmounts = false;
   String? proposedDate(Json draft) =>
       draft['period_start'] ?? draft['trade_date'] ?? draft['doc_date'] ??
       draft['issued_on'] ?? draft['quoted_on'];
@@ -145,6 +146,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         shopName = draft['store_name_read']?.toString() ?? '';
         vendorName = draft['supplier_name_read']?.toString() ?? '';
         amountInputs.clear();
+        showEmptyAmounts = false;
         for (final key in statementAmountLabels.keys.where(draft.containsKey)) {
           amountInputs[key] = draft[key]?.toString() ?? '';
         }
@@ -482,6 +484,10 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
     final wide = MediaQuery.sizeOf(context).width >= 800;
     final compact = MediaQuery.sizeOf(context).width < 400;
     final draft = object(preview?['draft']);
+    bool hasReadAmount(String key) =>
+        (draft[key]?.toString().trim() ?? '').isNotEmpty;
+    final visibleAmounts = amountInputs.keys.where((key) =>
+        showEmptyAmounts || hasReadAmount(key) || amountInputs[key]!.trim().isNotEmpty);
     final editor = ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       // Floating labels sit on the top border; 16px between fields keeps
@@ -528,16 +534,14 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
             }),
           const SizedBox(height: 16),
           if (amountInputs.isNotEmpty)
-            ExpansionTile(
-              title: Text(keepWords('원본 명세표 금액'), style: Txt.section),
-              initiallyExpanded: amountInputs.values.any((v) => v.isNotEmpty),
-              tilePadding: EdgeInsets.zero,
-              shape: const Border(),
-              collapsedShape: const Border(),
-              childrenPadding: const EdgeInsets.only(top: 10, bottom: 4),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: gap([
-                for (final key in amountInputs.keys)
+                if (visibleAmounts.isNotEmpty)
+                  Text(keepWords('원본 명세표 금액'), style: Txt.section),
+                for (final key in visibleAmounts)
                   TextFormField(
+                    key: ValueKey('amount-$key'),
                     initialValue: amountInputs[key],
                     enabled: !saving,
                     keyboardType: TextInputType.number,
@@ -546,6 +550,16 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
                       hintText: '미기재',
                     ),
                     onChanged: (v) => amountInputs[key] = v,
+                  ),
+                if (amountInputs.keys.any((key) => !hasReadAmount(key)))
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: saving ? null : () => setState(() => showEmptyAmounts = !showEmptyAmounts),
+                      icon: Icon(showEmptyAmounts ? Icons.expand_less : Icons.add),
+                      label: Text(showEmptyAmounts ? '빈 금액 칸 접기' :
+                          visibleAmounts.isEmpty ? '금액 직접 입력' : '다른 금액 입력'),
+                    ),
                   ),
               ], 16),
             ),
