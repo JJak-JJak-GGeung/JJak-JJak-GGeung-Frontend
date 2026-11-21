@@ -34,6 +34,8 @@ class ApiError implements Exception {
   String toString() => switch (status) {
         401 => '다시 로그인해 주세요.',
         403 => '이 자료를 열 권한이 없습니다.',
+        404 || 405 when detail == 'PHOTO_API_UNAVAILABLE' =>
+          '현재 서버에서 사진 판독 기능을 사용할 수 없습니다. 서버 배포 후 같은 사진으로 다시 시도해 주세요.',
         404 => '자료를 찾지 못했습니다.',
         409 when detail == 'PHOTO_ALREADY_REGISTERED' => '같은 원본이 이미 등록되어 있습니다. 기존 문서에서 확인해 주세요.',
         503 when detail == 'PHOTO_READING_FAILED' => '사진 판독을 마치지 못했습니다. 원본을 확인하거나 다시 시도해 주세요.',
@@ -115,8 +117,18 @@ class SettlementApi implements Backend {
       ..fields.addAll(fields)
       ..files.add(http.MultipartFile.fromBytes('file', bytes,
           filename: name, contentType: MediaType.parse(mime)));
-    return object(
-        _decode(await http.Response.fromStream(await request.send())));
+    final response = await http.Response.fromStream(await request.send());
+    try {
+      return object(_decode(response));
+    } on ApiError catch (error) {
+      final photoReview = path == '/api/photo-previews' || path == '/api/photo-previews/confirm';
+      final missingRoute = error.status == 404 && (error.detail == null || error.detail == 'Not Found');
+      final wrongMethod = error.status == 405 && (error.detail == null || error.detail == 'Method Not Allowed');
+      if (photoReview && (missingRoute || wrongMethod)) {
+        throw ApiError(error.status, 'PHOTO_API_UNAVAILABLE');
+      }
+      rethrow;
+    }
   }
 }
 
