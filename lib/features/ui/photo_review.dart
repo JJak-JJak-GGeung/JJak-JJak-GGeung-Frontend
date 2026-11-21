@@ -31,6 +31,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   String? lastPayload;
   String shopName = '', vendorName = '';
   DateTime? week;
+  String tradeDate = '';
+  String? proposedDate(Json draft) => draft['trade_date'] ?? draft['doc_date'] ?? draft['issued_on'] ?? draft['quoted_on'];
   bool storesLoaded = false, suppliersLoaded = false, periodsLoaded = false;
 
   String day(DateTime d) => d.toIso8601String().split('T').first;
@@ -90,7 +92,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
             .toList();
         shopName = draft['store_name_read']?.toString() ?? '';
         vendorName = draft['supplier_name_read']?.toString() ?? '';
-        final date = DateTime.tryParse(draft['doc_date']?.toString() ?? '');
+        tradeDate = draft['trade_date']?.toString() ?? '';
+        final date = DateTime.tryParse(proposedDate(draft) ?? '');
         if (date != null && date.year >= 1900 && date.year < 2200)
           week = monday(date);
         type = draft['doc_type'] as String?;
@@ -197,7 +200,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         'periods',
       );
       if (!mounted || supplier != id) return;
-      final date = object(preview?['draft'])['doc_date']?.toString();
+      final date = proposedDate(object(preview?['draft']));
       final matches = list
           .where(
             (p) =>
@@ -238,6 +241,12 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       );
 
   Future<void> _save() async {
+    final entered = tradeDate.trim();
+    final parsed = DateTime.tryParse(entered);
+    if (entered.isNotEmpty && (parsed == null || day(parsed) != entered)) {
+      setState(() => error = '거래일을 연도-월-일 형식으로 확인해 주세요.');
+      return;
+    }
     final edits = <Json>[];
     for (final l in lines) {
       String? val(String k) {
@@ -277,6 +286,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         'week_start': day(week!)
       else
         'period_id': period,
+      if (entered != (object(preview?['draft'])['trade_date'] ?? ''))
+        'trade_date': entered.isEmpty ? null : entered,
       'doc_type': type,
       'lines': edits,
     });
@@ -379,6 +390,13 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
             style: Txt.body,
           ),
           const SizedBox(height: 12),
+          if (draft['source_date_text'] != null) Text('원본 날짜 표기 · ${draft['source_date_text']}'),
+          if (draft['doc_date'] != null) Text('문서일 · ${draft['doc_date']}'),
+          if (draft['issued_on'] != null) Text('작성·발행일 · ${draft['issued_on']}'),
+          if (draft['quoted_on'] != null) Text('견적일 · ${draft['quoted_on']}'),
+          TextFormField(initialValue: tradeDate, enabled: !saving,
+            decoration: const InputDecoration(labelText: '원본 거래일', hintText: 'YYYY-MM-DD', helperText: '거래일이 없으면 비워 두세요. 정산 기간은 별도로 선택합니다.'),
+            onChanged: (value) => tradeDate = value),
           if (!storesLoaded && !loadingChoices)
             TextButton(
               onPressed: _loadStores,
@@ -455,6 +473,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
                     ),
                     _field(l, 'unit_price_read', '단가 (원)'),
                     _field(l, 'amount_read', '행 금액 (원)'),
+                    if (l['tax_amount_read'] != null) Text('행 세액 · ${won(l['tax_amount_read'])}'),
+                    if (l['line_date_text'] != null) Text('품목 날짜 표기 · ${l['line_date_text']}'),
                   ],
                 ),
               ),

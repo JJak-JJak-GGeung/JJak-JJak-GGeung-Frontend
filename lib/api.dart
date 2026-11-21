@@ -28,13 +28,16 @@ class ApiError implements Exception {
   final int status;
   final String? detail;
 
-  bool get stale => status == 409 && detail != 'KEY_REUSE';
+  bool get stale => status == 409 && !{'KEY_REUSE', 'DOCUMENT_IN_USE', 'APPROVED_DOCUMENT'}.contains(detail);
 
   @override
   String toString() => switch (status) {
         401 => '이 브라우저의 저장 공간을 허용한 뒤 같은 주소를 다시 열어 주세요.',
         403 => '이 자료를 열 권한이 없습니다.',
         404 => '자료를 찾지 못했습니다.',
+        409 when detail == 'DOCUMENT_IN_USE' => '승인본·확인 기록 또는 다른 정산에서 사용한 자료는 삭제할 수 없습니다.',
+        409 when detail == 'APPROVED_DOCUMENT' => '승인본에 저장된 원본의 거래일은 수정할 수 없습니다.',
+        503 when detail == 'FILE_REMOVAL_PENDING' => '정산에서 제외했습니다. 원본 파일 삭제 마무리를 눌러 주세요.',
         409 when detail == 'PHOTO_ALREADY_REGISTERED' => '같은 원본이 이미 등록되어 있습니다. 기존 문서에서 확인해 주세요.',
         503 when detail == 'PHOTO_READING_FAILED' => '사진 판독을 마치지 못했습니다. 원본을 확인하거나 다시 시도해 주세요.',
         422 when detail == 'NO_REVIEWABLE_LINES' => '판독한 품목이 없습니다. 원본의 품목 행을 확인해 주세요.',

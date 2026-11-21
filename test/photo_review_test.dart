@@ -230,6 +230,9 @@ void main() {
                   api: api))));
       await tester.pumpAndSettle();
       expect(api.uploads, ['/api/photo-previews']);
+      final tradeDate = find.widgetWithText(TextFormField, '원본 거래일');
+      await tester.scrollUntilVisible(tradeDate, 180, scrollable: find.byType(Scrollable).first);
+      await tester.enterText(tradeDate, '2025-01-31');
       final vendor = find.widgetWithText(TextFormField, '새 거래처 이름 (공급자)');
       await tester.scrollUntilVisible(vendor, 180,
           scrollable: find.byType(Scrollable).first);
@@ -248,6 +251,7 @@ void main() {
           firstStore ? '우리 점포' : 'shop');
       expect(request['supplier_name'], '확인한 수산');
       expect(request['week_start'], '2026-11-09');
+      expect(request['trade_date'], '2025-01-31');
       expect(request['supplier_id'], isNull);
       expect(
           api.uploads, ['/api/photo-previews', '/api/photo-previews/confirm']);
