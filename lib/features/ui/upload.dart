@@ -4,13 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'shared.dart';
+import 'photo_review.dart';
 
 const _docTypes = ['DELIVERY', 'RECEIPT', 'INVOICE', 'CORRECTED_INVOICE'];
 
 /// 자료 올리기: 원본 업로드 → 판독 줄과 원본 확인 → 수령 기록을 납품에 연결,
 /// 수정 청구서의 대체 대상 확인 → 최신 정산 재조회.
 class UploadScreen extends ConsumerStatefulWidget {
-  const UploadScreen(this.periodId, {super.key});
+  const UploadScreen(this.periodId, {this.initialDocument, super.key});
+  final String? initialDocument;
   final String periodId;
 
   @override
@@ -22,7 +24,16 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
   String type = 'DELIVERY';
 
   /// Document shown in the detail card.
-  String? selectedId;
+  late String? selectedId = widget.initialDocument;
+
+  @override
+  void didUpdateWidget(UploadScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.periodId != widget.periodId || oldWidget.initialDocument != widget.initialDocument) {
+      selectedId = widget.initialDocument;
+      lastUpload = null;
+    }
+  }
 
   /// Response of the last upload or extraction retry (carries `duplicate`).
   Json? lastUpload;
@@ -57,6 +68,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
   }
 
   Future<void> _pickAndUpload() async {
+    if (!demo) { await startPhotoReview(context); return; }
     final picked = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['png', 'jpg', 'jpeg', 'webp'],
@@ -268,6 +280,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
       const SizedBox(height: 6),
       const Text('사진 한 장씩 올려 주세요. 판독한 줄은 원본과 함께 확인합니다.', style: Txt.label),
       const SizedBox(height: 20),
+      if (demo) ...[
       const Text('자료 종류', style: Txt.label),
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
@@ -279,6 +292,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
           ),
       ]),
       const SizedBox(height: 16),
+      ],
       FilledButton.icon(
         onPressed: busy ? null : _pickAndUpload,
         icon: const Icon(Icons.add_photo_alternate_outlined),
@@ -384,6 +398,8 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
               qtyText(line, 'qty_read'),
               caption: [
                 if (line['item'] != null) line['item'].toString(),
+                '단가 ${won(line['unit_price_corrected'] ?? line['unit_price_read'])}',
+                '금액 ${won(line['amount_corrected'] ?? line['amount_read'])}',
                 locationText(line['source_location']),
               ].join(' · '),
               onTap: () => showOriginal(context, _lineRef(doc, line)),
