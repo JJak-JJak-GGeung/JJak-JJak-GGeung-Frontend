@@ -211,7 +211,7 @@ class _StartScreenState extends ConsumerState<StartScreen> {
       shape: const CircleBorder(),
       backgroundColor: Palette.primary,
       foregroundColor: Colors.white,
-      child: const Icon(Icons.add, size: 30),
+      child: const Icon(Icons.add),
     ),
     children: [
       Text(keepWords('안녕하세요 admin님'), style: Txt.section.copyWith(color: Palette.primary)),
@@ -249,7 +249,7 @@ class _StartScreenState extends ConsumerState<StartScreen> {
       if (directoryReady && store != null)
         TextButton.icon(onPressed: () => _register(parent: store), icon: const Icon(Icons.add), label: Text(keepWords('거래처 직접 등록'))),
       if (directoryReady)
-        TextButton(onPressed: () => openSampleDelivery(context, backend), child: Text(keepWords('합성 명세표로 연습'))),
+        TextButton(onPressed: () => openSampleDelivery(context, backend), child: Text(keepWords('예시 명세표로 연습'))),
       if (periods != null) ...[
         const SectionTitle('정산 기간', caption: '연도나 달력에서 찾고, 정산할 주를 여세요.'),
         _Pending(
@@ -388,7 +388,7 @@ class _Picker extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.expand_more, color: Palette.muted),
+                const Icon(Icons.expand_more, size: inlineIconSize, color: Palette.muted),
               ],
             ),
           ),
@@ -445,7 +445,7 @@ class _OptionTile extends StatelessWidget {
               ),
             ),
             if (selected)
-              const Icon(Icons.check, color: Palette.primary, size: 20),
+              const Icon(Icons.check, color: Palette.primary, size: inlineIconSize),
           ],
         ),
       ),
@@ -641,7 +641,7 @@ class _UploadTargetSheetState extends State<_UploadTargetSheet> {
                   ),
                 if (error != null) ...[
                   const SizedBox(height: 12),
-                  Text(error.toString(), style: Txt.body),
+                  Text(userErrorText(error), style: Txt.body),
                   const SizedBox(height: 8),
                   OutlinedButton(
                     onPressed: _load,
@@ -747,7 +747,7 @@ class _Pending extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(state.error.toString(), style: Txt.body),
+            Text(userErrorText(state.error), style: Txt.body),
             if (retry != null) ...[
               const SizedBox(height: 12),
               OutlinedButton(onPressed: retry, child: const Text('다시 불러오기')),

@@ -46,15 +46,19 @@ class ApiError implements Exception {
         422 when detail == 'DEMO_SAMPLE_WEEK_ONLY' => '예시에서는 11월 둘째 주(11/09~11/15)만 열 수 있습니다.',
         422 when detail == 'NO_REVIEWABLE_LINES' => '판독한 품목이 없습니다. 원본의 품목 행을 확인해 주세요.',
         409 when detail == 'KEY_REUSE' =>
-          '같은 요청 번호로 다른 내용이 전송되었습니다. 화면을 새로 열어 다시 시도하세요.',
+          '화면을 새로 열고 입력한 내용을 확인한 뒤 다시 시도해 주세요.',
         409 => '자료가 변경되었습니다. 최신 근거를 확인한 뒤 다시 시도하세요.',
         413 => '파일은 10MB 이하만 올릴 수 있습니다.',
         415 => 'PNG·JPEG·WebP 사진만 올릴 수 있습니다.',
         422 => '확인할 자료가 남아 있습니다. 입력과 근거를 확인하세요.',
         503 => '원본 저장소에 연결하지 못했습니다. 잠시 뒤 다시 시도하세요.',
-        _ => '요청을 완료하지 못했습니다 ($status).',
+        _ => '요청을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.',
       };
 }
+
+String userErrorText(Object? error) => error is ApiError
+    ? error.toString()
+    : '요청을 완료하지 못했습니다. 연결을 확인한 뒤 다시 시도해 주세요.';
 
 /// What the screens need from a server. [SettlementApi] talks to the real
 /// FastAPI server; the demo backend answers the same paths from memory.

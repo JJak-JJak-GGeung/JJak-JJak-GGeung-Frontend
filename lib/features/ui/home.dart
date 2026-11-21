@@ -69,8 +69,7 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = objects(data['items']);
-    final blockers =
-        data['blockers'] is List ? data['blockers'] as List : const [];
+    final blockers = approvalReasons(data['blockers']);
     final due = paymentDue(data);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -87,7 +86,7 @@ class _Body extends ConsumerWidget {
         ),
         TextButton.icon(
           onPressed: () => refreshPeriod(ref, periodId),
-          icon: const Icon(Icons.refresh, size: 18),
+          icon: const Icon(Icons.refresh),
           label: const Text('새로고침'),
         ),
       ]),
@@ -97,7 +96,7 @@ class _Body extends ConsumerWidget {
       InfoRow('승인액', won(data['approved_amount']),
           caption:
               data['approved_amount'] == null ? '점주가 승인하기 전에는 비어 있습니다' : null),
-      SectionTitle('확인할 납품', caption: '납품 건별 청구와 수령 수량입니다. 주간 합계와 따로 봅니다.'),
+      const SectionTitle('확인할 납품'),
       StatusChip(periodStatus(data)),
       const SizedBox(height: 12),
       if (items.isEmpty)
@@ -125,8 +124,8 @@ class _Body extends ConsumerWidget {
                 style:
                     Txt.value.copyWith(fontSize: 14, color: Palette.warnInk)),
             const SizedBox(height: 6),
-            for (final code in blockers)
-              Text('· ${blockerText(code)}',
+            for (final reason in blockers)
+              Text(reason,
                   style: Txt.body.copyWith(color: Palette.warnInk)),
           ]),
         ),

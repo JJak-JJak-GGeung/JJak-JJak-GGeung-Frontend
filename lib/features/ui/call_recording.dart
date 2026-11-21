@@ -98,7 +98,7 @@ class _CallRecordingReviewState extends ConsumerState<CallRecordingReview> {
     try {
       await load();
     } catch (e) {
-      if (mounted) setState(() => error = e.toString());
+      if (mounted) setState(() => error = userErrorText(e));
     } finally {
       if (mounted) setState(() => loadingChoices = false);
     }
@@ -211,7 +211,7 @@ class _CallRecordingReviewState extends ConsumerState<CallRecordingReview> {
     } catch (e) {
       if (!mounted) return;
       final stale = e is ApiError && e.stale;
-      setState(() => error = e.toString());
+      setState(() => error = userErrorText(e));
       // The period changed under us: reload its revision before the retry.
       if (stale) await _period(period!);
     } finally {
@@ -277,7 +277,7 @@ class _CallRecordingReviewState extends ConsumerState<CallRecordingReview> {
                   TintCard(
                     child: Row(
                       children: [
-                        const Icon(Icons.call_outlined, color: Palette.primary),
+                        const Icon(Icons.call_outlined, size: inlineIconSize, color: Palette.primary),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(

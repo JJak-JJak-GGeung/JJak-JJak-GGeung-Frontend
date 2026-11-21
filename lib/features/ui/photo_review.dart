@@ -128,7 +128,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       });
       await _loadStores();
     } catch (e) {
-      if (mounted) setState(() => error = e.toString());
+      if (mounted) setState(() => error = userErrorText(e));
     } finally {
       if (mounted) setState(() => reading = false);
     }
@@ -156,7 +156,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
           s['name']?.toString().trim().toLowerCase() == name).toList();
       if (matches.length == 1) await _store(matches.single['id']);
     } catch (e) {
-      if (mounted) setState(() => error = e.toString());
+      if (mounted) setState(() => error = userErrorText(e));
     } finally {
       if (mounted) setState(() => loadingChoices = false);
     }
@@ -203,7 +203,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       if (matches.length == 1) await _supplier(matches.single['id']);
       if (matches.isEmpty) await _supplier(_newChoice);
     } catch (e) {
-      if (mounted && store == id) setState(() => error = e.toString());
+      if (mounted && store == id) setState(() => error = userErrorText(e));
     } finally {
       if (mounted && store == id) setState(() => loadingChoices = false);
     }
@@ -253,7 +253,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         }
       });
     } catch (e) {
-      if (mounted && supplier == id) setState(() => error = e.toString());
+      if (mounted && supplier == id) setState(() => error = userErrorText(e));
     } finally {
       if (mounted && supplier == id) setState(() => loadingChoices = false);
     }
@@ -402,7 +402,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         '${uploadRoute(savedPeriod)}?document=${part(result['document_id'])}',
       );
     } catch (e) {
-      if (mounted) setState(() => error = e.toString());
+      if (mounted) setState(() => error = userErrorText(e));
     } finally {
       if (mounted) setState(() => saving = false);
     }

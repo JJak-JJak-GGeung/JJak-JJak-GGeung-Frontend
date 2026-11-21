@@ -529,7 +529,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         padding: const EdgeInsets.only(top: 6),
         child: linkedTo != null
             ? Row(children: [
-                const Icon(Icons.check_circle, size: 18, color: Palette.okInk),
+                const Icon(Icons.check_circle, size: inlineIconSize, color: Palette.okInk),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text('연결됨 · $linkedTo',
@@ -540,7 +540,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
               ])
             : OutlinedButton.icon(
                 onPressed: busy ? null : () => _linkReceipt(data, doc, line),
-                icon: const Icon(Icons.link, size: 18),
+                icon: const Icon(Icons.link),
                 label: const Text('납품에 연결'),
               ),
       );
@@ -716,7 +716,7 @@ class _PickSheetState extends State<_PickSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Row(children: [
             Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                size: 20, color: isSelected ? Palette.primary : Palette.muted),
+                size: inlineIconSize, color: isSelected ? Palette.primary : Palette.muted),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -36,7 +36,7 @@ class _RegisterNameDialogState extends State<RegisterNameDialog> {
       if (mounted)
         setState(() {
           saving = false;
-          error = e.toString();
+          error = userErrorText(e);
         });
     }
   }
@@ -84,7 +84,7 @@ Future<void> openSampleDelivery(BuildContext context, Backend api) async {
     final samples = records(await api.get('/api/sample-deliveries'), 'samples');
     if (!context.mounted) return;
     if (samples.isEmpty) {
-      notify(context, '등록된 합성 명세표가 없습니다.');
+      notify(context, '사용할 예시 명세표가 없습니다.');
       return;
     }
     final sample = await showModalBottomSheet<Json>(
@@ -92,7 +92,7 @@ Future<void> openSampleDelivery(BuildContext context, Backend api) async {
       builder: (ctx) => SafeArea(
           child: ListView(shrinkWrap: true, children: [
         const ListTile(
-            title: Text('합성 명세표 선택'),
+            title: Text('예시 명세표 선택'),
             subtitle: Text('원본을 판독한 뒤 저장할 점포를 확인하세요.')),
         for (final row in samples)
           ListTile(
@@ -117,6 +117,6 @@ Future<void> openSampleDelivery(BuildContext context, Backend api) async {
     ));
     if (route != null && context.mounted) context.go(route);
   } catch (e) {
-    if (context.mounted) notify(context, e.toString());
+    if (context.mounted) notify(context, e);
   }
 }
