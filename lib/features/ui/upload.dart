@@ -288,13 +288,14 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     final settlement = ref.watch(settlementProvider(periodId));
     return Screen(
       title: '자료 올리기',
+      homeEnabled: !busy,
       children: [
         loaded(settlement, _body, retry: () => ref.invalidate(settlementProvider(periodId))),
       ],
       bottom: [
         FilledButton(
           onPressed: () => context.go(periodRoute(periodId)),
-          child: const Text('정산 홈에서 확인'),
+          child: const Text('이 거래처 정산 보기'),
         ),
       ],
     );
@@ -324,7 +325,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
       FilledButton.icon(
         onPressed: busy ? null : _pickAndUpload,
         icon: const Icon(Icons.add_photo_alternate_outlined),
-        label: const Text('사진 선택해 올리기'),
+        label: Text(documents.isEmpty ? '사진 선택해 올리기' : '사진 더 올리기'),
       ),
       if (busy) ...[
         const SizedBox(height: 10),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api.dart';
 import 'demo_backend.dart';
+import 'start_button.dart';
 
 export '../../api.dart';
 
@@ -293,12 +294,16 @@ class Screen extends StatelessWidget {
       required this.children,
       this.bottom = const [],
       this.leading = true,
+      this.homeEnabled = true,
+      this.homeDraft = false,
       this.appBarActions = const [],
       this.floatingActionButton});
   final String title;
   final List<Widget> children;
   final List<Widget> bottom;
   final bool leading;
+  final bool homeEnabled;
+  final bool homeDraft;
   final List<Widget> appBarActions;
 
   /// Bottom-right action, e.g. the start screen's camera button.
@@ -310,7 +315,7 @@ class Screen extends StatelessWidget {
         appBar: AppBar(
           title: Text(title),
           automaticallyImplyLeading: leading,
-          actions: appBarActions,
+          actions: [...appBarActions, if (leading) StartButton(enabled: homeEnabled, draft: homeDraft)],
         ),
         body: SafeArea(
           child: Center(

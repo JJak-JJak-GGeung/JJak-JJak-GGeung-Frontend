@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'shared.dart';
+import 'start_button.dart';
 
 const statementAmountLabels = {
   'supply_total': '공급가액 합계',
@@ -597,6 +598,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
             icon: const Icon(Icons.image_outlined),
             label: const Text('원본 보기'),
           ),
+          StartButton(enabled: !saving, draft: preview != null, returnRoute: true),
         ],
       ),
       body: SafeArea(
