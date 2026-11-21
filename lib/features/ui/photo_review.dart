@@ -14,9 +14,14 @@ const photoTypes = ['DELIVERY', 'RECEIPT', 'INVOICE', 'CORRECTED_INVOICE'];
 
 /// The file stays available on this page even during a failed or retried reading.
 class PhotoReview extends ConsumerStatefulWidget {
-  const PhotoReview(this.file, {super.key, this.api});
+  const PhotoReview(this.file, {super.key, this.api, this.existing});
   final Backend? api;
   final PlatformFile file;
+
+  /// Re-reading a stored original: its doc_type, store_id, supplier_id and
+  /// period_id are preselected so the confirm completes that document instead
+  /// of colliding with it (PHOTO_ALREADY_REGISTERED).
+  final Json? existing;
   @override
   ConsumerState<PhotoReview> createState() => _PhotoReviewState();
 }
@@ -34,6 +39,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   String tradeDate = '';
   String? proposedDate(Json draft) => draft['trade_date'] ?? draft['doc_date'] ?? draft['issued_on'] ?? draft['quoted_on'];
   bool storesLoaded = false, suppliersLoaded = false, periodsLoaded = false;
+  String? kept(String key) => widget.existing?[key]?.toString();
 
   String day(DateTime d) => d.toIso8601String().split('T').first;
   DateTime monday(DateTime d) =>
@@ -96,7 +102,9 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         final date = DateTime.tryParse(proposedDate(draft) ?? '');
         if (date != null && date.year >= 1900 && date.year < 2200)
           week = monday(date);
-        type = photoTypes.contains(draft['doc_type']) ? draft['doc_type'] as String : null;
+        type = photoTypes.contains(kept('doc_type'))
+            ? kept('doc_type')
+            : photoTypes.contains(draft['doc_type']) ? draft['doc_type'] as String : null;
         reading = false;
       });
       await _loadStores();
@@ -119,6 +127,11 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         stores = shops;
         storesLoaded = true;
       });
+      final keepStore = kept('store_id');
+      if (keepStore != null && shops.any((s) => '${s['id']}' == keepStore)) {
+        await _store(keepStore);
+        return;
+      }
       final name = shopName.trim().toLowerCase();
       final matches = shops.where((s) => name.isNotEmpty &&
           s['name']?.toString().trim().toLowerCase() == name).toList();
@@ -157,6 +170,11 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         suppliers = list;
         suppliersLoaded = true;
       });
+      final keepSupplier = kept('supplier_id');
+      if (keepSupplier != null && list.any((s) => '${s['id']}' == keepSupplier)) {
+        await _supplier(keepSupplier);
+        return;
+      }
       String norm(Object? v) =>
           (v ?? '').toString().trim().toLowerCase();
       final name = norm(object(preview?['draft'])['supplier_name_read']);
@@ -205,11 +223,15 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
                 date.compareTo('${p['period_end']}') <= 0,
           )
           .toList();
+      final keepPeriod = kept('period_id');
       setState(() {
         periods = list;
         periodsLoaded = true;
         if (matches.isEmpty) period = _newChoice;
         if (matches.length == 1) period = matches.single['period_id'];
+        if (keepPeriod != null && list.any((p) => '${p['period_id']}' == keepPeriod)) {
+          period = keepPeriod;
+        }
       });
     } catch (e) {
       if (mounted && supplier == id) setState(() => error = e.toString());
