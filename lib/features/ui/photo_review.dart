@@ -49,7 +49,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   DateTime? week;
   String tradeDate = '';
   final amountInputs = <String, String>{};
-  String? proposedDate(Json draft) => draft['trade_date'] ?? draft['doc_date'] ?? draft['issued_on'] ?? draft['quoted_on'];
+  String? proposedDate(Json draft) =>
+      draft['trade_date'] ?? draft['doc_date'] ?? draft['issued_on'] ?? draft['quoted_on'];
   bool storesLoaded = false, suppliersLoaded = false, periodsLoaded = false;
   String? kept(String key) => widget.existing?[key]?.toString();
 
@@ -57,8 +58,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
 
   /// Short "11/9" date for the week button label (fits a 320px phone).
   String _md(DateTime d) => '${d.month}/${d.day}';
-  DateTime monday(DateTime d) =>
-      DateTime(d.year, d.month, d.day - (d.weekday - 1));
+  DateTime monday(DateTime d) => DateTime(d.year, d.month, d.day - (d.weekday - 1));
   bool get ready =>
       !loadingChoices &&
       storesLoaded &&
@@ -73,18 +73,19 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
 
   Future<void> chooseWeek() async {
     final picked = await showDatePicker(
-        context: context,
-        initialDate: week ?? DateTime.now(),
-        firstDate: DateTime(1900),
-        lastDate: DateTime(2200));
+      context: context,
+      initialDate: week ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2200),
+    );
     if (picked != null && mounted) setState(() => week = monday(picked));
   }
 
   String get mime => switch (widget.file.extension?.toLowerCase()) {
-        'jpeg' || 'jpg' => 'image/jpeg',
-        'webp' => 'image/webp',
-        _ => 'image/png',
-      };
+    'jpeg' || 'jpg' => 'image/jpeg',
+    'webp' => 'image/webp',
+    _ => 'image/png',
+  };
 
   @override
   void initState() {
@@ -108,9 +109,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       setState(() {
         preview = result;
         final draft = object(result['draft']);
-        lines = objects(draft['lines'])
-            .map((l) => Map<String, dynamic>.from(l))
-            .toList();
+        lines = objects(draft['lines']).map((l) => Map<String, dynamic>.from(l)).toList();
         shopName = draft['store_name_read']?.toString() ?? '';
         vendorName = draft['supplier_name_read']?.toString() ?? '';
         amountInputs.clear();
@@ -119,11 +118,12 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         }
         tradeDate = draft['trade_date']?.toString() ?? '';
         final date = DateTime.tryParse(proposedDate(draft) ?? '');
-        if (date != null && date.year >= 1900 && date.year < 2200)
-          week = monday(date);
+        if (date != null && date.year >= 1900 && date.year < 2200) week = monday(date);
         type = photoTypes.contains(kept('doc_type'))
             ? kept('doc_type')
-            : photoTypes.contains(draft['doc_type']) ? draft['doc_type'] as String : null;
+            : photoTypes.contains(draft['doc_type'])
+            ? draft['doc_type'] as String
+            : null;
         reading = false;
       });
       await _loadStores();
@@ -152,8 +152,9 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         return;
       }
       final name = shopName.trim().toLowerCase();
-      final matches = shops.where((s) => name.isNotEmpty &&
-          s['name']?.toString().trim().toLowerCase() == name).toList();
+      final matches = shops
+          .where((s) => name.isNotEmpty && s['name']?.toString().trim().toLowerCase() == name)
+          .toList();
       if (matches.length == 1) await _store(matches.single['id']);
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
@@ -180,10 +181,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         });
         return;
       }
-      final list = records(
-        await api.get('/api/suppliers?store_id=${part(id)}'),
-        'suppliers',
-      );
+      final list = records(await api.get('/api/suppliers?store_id=${part(id)}'), 'suppliers');
       if (!mounted || store != id) return;
       setState(() {
         suppliers = list;
@@ -194,12 +192,9 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         await _supplier(keepSupplier);
         return;
       }
-      String norm(Object? v) =>
-          (v ?? '').toString().trim().toLowerCase();
+      String norm(Object? v) => (v ?? '').toString().trim().toLowerCase();
       final name = norm(object(preview?['draft'])['supplier_name_read']);
-      final matches = list
-          .where((s) => name.isNotEmpty && norm(s['name']) == name)
-          .toList();
+      final matches = list.where((s) => name.isNotEmpty && norm(s['name']) == name).toList();
       if (matches.length == 1) await _supplier(matches.single['id']);
       if (matches.isEmpty) await _supplier(_newChoice);
     } catch (e) {
@@ -227,9 +222,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         return;
       }
       final list = records(
-        await api.get(
-          '/api/periods?store_id=${part(store)}&supplier_id=${part(id)}',
-        ),
+        await api.get('/api/periods?store_id=${part(store)}&supplier_id=${part(id)}'),
         'periods',
       );
       if (!mounted || supplier != id) return;
@@ -260,22 +253,22 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   }
 
   void _original() => showDialog<void>(
-        context: context,
-        builder: (ctx) => Dialog.fullscreen(
-          child: Scaffold(
-            appBar: AppBar(
-              title: const Text('원본 사진'),
-              leading: CloseButton(onPressed: () => Navigator.pop(ctx)),
-            ),
-            body: Center(
-              child: InteractiveViewer(
-                maxScale: 8,
-                child: Image.memory(widget.file.bytes!, fit: BoxFit.contain),
-              ),
-            ),
+    context: context,
+    builder: (ctx) => Dialog.fullscreen(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('원본 사진'),
+          leading: CloseButton(onPressed: () => Navigator.pop(ctx)),
+        ),
+        body: Center(
+          child: InteractiveViewer(
+            maxScale: 8,
+            child: Image.memory(widget.file.bytes!, fit: BoxFit.contain),
           ),
         ),
-      );
+      ),
+    ),
+  );
 
   Future<void> _save() async {
     final entered = tradeDate.trim();
@@ -289,8 +282,10 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
     for (final entry in amountInputs.entries) {
       final text = entry.value.trim();
       final amount = int.tryParse(text);
-      if (text.isNotEmpty && (!RegExp(r'^-?[0-9]+$').hasMatch(text) ||
-          amount == null || amount.abs() > 9007199254740991)) {
+      if (text.isNotEmpty &&
+          (!RegExp(r'^-?[0-9]+$').hasMatch(text) ||
+              amount == null ||
+              amount.abs() > 9007199254740991)) {
         setState(() => error = '${statementAmountLabels[entry.key]}을 원 단위 정수로 입력해 주세요.');
         return;
       }
@@ -311,18 +306,16 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
           'supply_amount_read',
           'discount_amount_read',
           'line_total_read',
-        ]) key: val(key),
+        ])
+          key: val(key),
       };
       final integer = RegExp(r'^-?\d{1,16}$');
       final decimal = RegExp(r'^-?\d{1,16}(\.\d{1,8})?$');
       if (val('item') == null ||
-          [
-            val('qty_read'),
-            val('unit_price_read'),
-          ].any((v) => v != null && !decimal.hasMatch(v)) ||
-          amounts.values.any((v) =>
-              v != null &&
-              (!integer.hasMatch(v) || int.parse(v).abs() > 9007199254740991))) {
+          [val('qty_read'), val('unit_price_read')].any((v) => v != null && !decimal.hasMatch(v)) ||
+          amounts.values.any(
+            (v) => v != null && (!integer.hasMatch(v) || int.parse(v).abs() > 9007199254740991),
+          )) {
         setState(() => error = '품목명과 숫자 형식을 확인해 주세요. 모르는 수량·가격은 비워 둘 수 있습니다.');
         return;
       }
@@ -340,25 +333,15 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         'unit': val('unit'),
         'qty_read': val('qty_read'),
         'unit_price_read': val('unit_price_read'),
-        for (final key in ['spec', 'item_code', 'origin', 'lot_no', 'line_note'])
-          key: val(key),
+        for (final key in ['spec', 'item_code', 'origin', 'lot_no', 'line_note']) key: val(key),
         for (final entry in amounts.entries)
           entry.key: entry.value == null ? null : int.parse(entry.value!),
       });
     }
     final payload = jsonEncode({
-      if (store == _newChoice)
-        'store_name': shopName.trim()
-      else
-        'store_id': store,
-      if (supplier == _newChoice)
-        'supplier_name': vendorName.trim()
-      else
-        'supplier_id': supplier,
-      if (period == _newChoice)
-        'week_start': day(week!)
-      else
-        'period_id': period,
+      if (store == _newChoice) 'store_name': shopName.trim() else 'store_id': store,
+      if (supplier == _newChoice) 'supplier_name': vendorName.trim() else 'supplier_id': supplier,
+      if (period == _newChoice) 'week_start': day(week!) else 'period_id': period,
       if (entered != (object(preview?['draft'])['trade_date'] ?? ''))
         'trade_date': entered.isEmpty ? null : entered,
       if (overrides.isNotEmpty) 'statement_amounts': overrides,
@@ -397,10 +380,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       };
       final savedPeriod = (result['period_id'] ?? period) as String;
       refreshPeriod(ref, savedPeriod);
-      Navigator.pop(
-        context,
-        '${uploadRoute(savedPeriod)}?document=${part(result['document_id'])}',
-      );
+      Navigator.pop(context, '${uploadRoute(savedPeriod)}?document=${part(result['document_id'])}');
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
     } finally {
@@ -413,42 +393,39 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
     String? value,
     Map<String, String> options,
     void Function(String) change,
-  ) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: DropdownButtonFormField<String>(
-          key: ValueKey([label, value, options.keys.join(',')].join('|')),
-          initialValue: value,
-          isExpanded: true,
-          // Menu rows may wrap to two lines; the closed field stays on one.
-          itemHeight: null,
-          decoration: InputDecoration(labelText: label),
-          items: options.entries
-              .map((e) => DropdownMenuItem(
-                    value: e.key,
-                    child: Text(e.value, maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ))
-              .toList(),
-          selectedItemBuilder: (_) => options.values
-              .map((v) => Text(v, maxLines: 1, overflow: TextOverflow.ellipsis))
-              .toList(),
-          onChanged: saving || loadingChoices
-              ? null
-              : (v) {
-                  if (v != null) change(v);
-                },
-        ),
-      );
+  ) => DropdownButtonFormField<String>(
+    key: ValueKey([label, value, options.keys.join(',')].join('|')),
+    initialValue: value,
+    isExpanded: true,
+    // Menu rows may wrap to two lines; the closed field stays on one.
+    itemHeight: null,
+    decoration: InputDecoration(labelText: label),
+    items: options.entries
+        .map(
+          (e) => DropdownMenuItem(
+            value: e.key,
+            child: Text(e.value, maxLines: 2, overflow: TextOverflow.ellipsis),
+          ),
+        )
+        .toList(),
+    selectedItemBuilder: (_) =>
+        options.values.map((v) => Text(v, maxLines: 1, overflow: TextOverflow.ellipsis)).toList(),
+    onChanged: saving || loadingChoices
+        ? null
+        : (v) {
+            if (v != null) change(v);
+          },
+  );
 
   Widget _field(Json line, String key, String label) => Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: TextFormField(
-          initialValue: line[key]?.toString() ?? '',
-          enabled: !saving,
-          decoration: InputDecoration(labelText: label),
-          onChanged: (v) => line[key] = v,
-        ),
-      );
+    padding: const EdgeInsets.only(top: 14),
+    child: TextFormField(
+      initialValue: line[key]?.toString() ?? '',
+      enabled: !saving,
+      decoration: InputDecoration(labelText: label),
+      onChanged: (v) => line[key] = v,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -456,8 +433,10 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
     final compact = MediaQuery.sizeOf(context).width < 400;
     final draft = object(preview?['draft']);
     final editor = ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      // Floating labels sit on the top border; 16px between fields keeps
+      // them from colliding with the field above.
+      children: gap([
         const Text('판독값 확인', style: Txt.section),
         if (reading) const LinearProgressIndicator(),
         if (error != null)
@@ -468,93 +447,120 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         if (!reading && preview == null)
           OutlinedButton(onPressed: _read, child: const Text('다시 판독')),
         if (preview != null) ...[
-          Text(
-            '문서에서 읽은 거래처 · ${draft['supplier_name_read'] ?? '미확인'}',
-            style: Txt.body,
-          ),
+          Text('문서에서 읽은 거래처 · ${draft['supplier_name_read'] ?? '미확인'}', style: Txt.body),
           const SizedBox(height: 12),
-          if (draft['source_date_text'] != null) Text('원본 날짜 표기 · ${draft['source_date_text']}'),
-          if (draft['doc_date'] != null) Text('문서일 · ${draft['doc_date']}'),
-          if (draft['issued_on'] != null) Text('작성·발행일 · ${draft['issued_on']}'),
-          if (draft['quoted_on'] != null) Text('견적일 · ${draft['quoted_on']}'),
-          TextFormField(initialValue: tradeDate, enabled: !saving,
-            decoration: const InputDecoration(labelText: '원본 거래일', hintText: 'YYYY-MM-DD', helperText: '거래일이 없으면 비워 두세요. 정산 기간은 별도로 선택합니다.', helperMaxLines: 3),
-            onChanged: (value) => tradeDate = value),
-          if (amountInputs.isNotEmpty)
-            ExpansionTile(title: Text(keepWords('원본 명세표 금액')),
-              initiallyExpanded: amountInputs.values.any((v) => v.isNotEmpty),
+          if (draft['source_date_text'] != null ||
+              draft['doc_date'] != null ||
+              draft['issued_on'] != null ||
+              draft['quoted_on'] != null)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final key in amountInputs.keys)
-                  TextFormField(initialValue: amountInputs[key], enabled: !saving,
-                    decoration: InputDecoration(labelText: '${statementAmountLabels[key]} (원)', hintText: '미기재'),
-                    onChanged: (v) => amountInputs[key] = v),
-              ]),
-          if (!storesLoaded && !loadingChoices)
-            TextButton(
-              onPressed: _loadStores,
-              child: Text(keepWords('점포 목록 다시 불러오기')),
+                if (draft['source_date_text'] != null)
+                  Text('원본 날짜 표기 · ${draft['source_date_text']}', style: Txt.label),
+                if (draft['doc_date'] != null) Text('문서일 · ${draft['doc_date']}', style: Txt.label),
+                if (draft['issued_on'] != null)
+                  Text('작성·발행일 · ${draft['issued_on']}', style: Txt.label),
+                if (draft['quoted_on'] != null)
+                  Text('견적일 · ${draft['quoted_on']}', style: Txt.label),
+              ],
             ),
+          TextFormField(
+            initialValue: tradeDate,
+            enabled: !saving,
+            decoration: const InputDecoration(
+              labelText: '원본 거래일',
+              hintText: 'YYYY-MM-DD',
+              helperText: '거래일이 없으면 비워 두세요. 정산 기간은 별도로 선택합니다.',
+              helperMaxLines: 3,
+            ),
+            onChanged: (value) => tradeDate = value,
+          ),
+          if (amountInputs.isNotEmpty)
+            ExpansionTile(
+              title: Text(keepWords('원본 명세표 금액'), style: Txt.section),
+              initiallyExpanded: amountInputs.values.any((v) => v.isNotEmpty),
+              tilePadding: EdgeInsets.zero,
+              shape: const Border(),
+              collapsedShape: const Border(),
+              childrenPadding: const EdgeInsets.only(top: 10, bottom: 4),
+              children: gap([
+                for (final key in amountInputs.keys)
+                  TextFormField(
+                    initialValue: amountInputs[key],
+                    enabled: !saving,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: '${statementAmountLabels[key]} (원)',
+                      hintText: '미기재',
+                    ),
+                    onChanged: (v) => amountInputs[key] = v,
+                  ),
+              ], 16),
+            ),
+          if (!storesLoaded && !loadingChoices)
+            TextButton(onPressed: _loadStores, child: Text(keepWords('점포 목록 다시 불러오기'))),
           if (storesLoaded && store == null && !loadingChoices) ...[
-            Text(shopName.trim().isEmpty
-                ? '공급받는 점포 이름을 확인해 주세요.'
-                : '사진의 공급받는 곳은 ‘$shopName’입니다. 저장할 점포를 선택해 주세요.'),
-            if (shopName.trim().isNotEmpty && !stores.any((s) =>
-                s['name']?.toString().trim().toLowerCase() == shopName.trim().toLowerCase()))
-              OutlinedButton(onPressed: () => _store(_newChoice),
-                child: const Text('이 이름으로 새 점포 등록하기')),
+            TintCard(
+              child: Text(
+                shopName.trim().isEmpty
+                    ? '공급받는 점포 이름을 확인해 주세요.'
+                    : '사진의 공급받는 곳은 ‘$shopName’입니다. 저장할 점포를 선택해 주세요.',
+                style: Txt.body,
+              ),
+            ),
+            if (shopName.trim().isNotEmpty &&
+                !stores.any(
+                  (s) =>
+                      s['name']?.toString().trim().toLowerCase() == shopName.trim().toLowerCase(),
+                ))
+              OutlinedButton(
+                onPressed: () => _store(_newChoice),
+                child: const Text('이 이름으로 새 점포 등록하기'),
+              ),
           ],
-          _choice(
-              '내 점포',
-              store,
-              {
-                if (storesLoaded) _newChoice: '새 점포 등록',
-                for (final s in stores) '${s['id']}': '${s['name']}',
-              },
-              _store),
+          _choice('내 점포', store, {
+            if (storesLoaded) _newChoice: '새 점포 등록',
+            for (final s in stores) '${s['id']}': '${s['name']}',
+          }, _store),
           if (store == _newChoice)
             TextFormField(
-                initialValue: shopName,
-                enabled: !saving,
-                maxLength: 150,
-                decoration:
-                    const InputDecoration(labelText: '내 점포 이름 (공급받는 곳)'),
-                onChanged: (v) => setState(() => shopName = v)),
-          _choice(
-              '저장할 거래처',
-              supplier,
-              {
-                if (suppliersLoaded) _newChoice: '새 거래처 등록',
-                for (final s in suppliers) '${s['id']}': '${s['name']}',
-              },
-              _supplier),
+              initialValue: shopName,
+              enabled: !saving,
+              maxLength: 150,
+              decoration: const InputDecoration(labelText: '내 점포 이름 (공급받는 곳)'),
+              onChanged: (v) => setState(() => shopName = v),
+            ),
+          _choice('저장할 거래처', supplier, {
+            if (suppliersLoaded) _newChoice: '새 거래처 등록',
+            for (final s in suppliers) '${s['id']}': '${s['name']}',
+          }, _supplier),
           if (supplier == _newChoice)
             TextFormField(
-                initialValue: vendorName,
-                enabled: !saving,
-                maxLength: 150,
-                decoration: const InputDecoration(labelText: '새 거래처 이름 (공급자)'),
-                onChanged: (v) => setState(() => vendorName = v)),
-          _choice(
-              '정산 기간',
-              period,
-              {
-                if (periodsLoaded) _newChoice: '새 정산 주',
-                for (final p in periods) '${p['period_id']}': '${p['label']}',
-              },
-              (v) => setState(() => period = v)),
-          _choice(
-              '문서 종류',
-              type,
-              {
-                for (final t in photoTypes) t: docTypeText(t),
-              },
-              (v) => setState(() => type = v)),
+              initialValue: vendorName,
+              enabled: !saving,
+              maxLength: 150,
+              decoration: const InputDecoration(labelText: '새 거래처 이름 (공급자)'),
+              onChanged: (v) => setState(() => vendorName = v),
+            ),
+          _choice('정산 기간', period, {
+            if (periodsLoaded) _newChoice: '새 정산 주',
+            for (final p in periods) '${p['period_id']}': '${p['label']}',
+          }, (v) => setState(() => period = v)),
+          _choice('문서 종류', type, {
+            for (final t in photoTypes) t: docTypeText(t),
+          }, (v) => setState(() => type = v)),
           if (period == _newChoice)
             OutlinedButton(
-                onPressed: saving ? null : chooseWeek,
-                child: Text(keepWords(week == null
-                    ? '자료를 보관할 정산 주 선택'
-                    : '${_md(week!)} ~ ${_md(week!.add(const Duration(days: 6)))} · 주 변경'))),
+              onPressed: saving ? null : chooseWeek,
+              child: Text(
+                keepWords(
+                  week == null
+                      ? '자료를 보관할 정산 주 선택'
+                      : '${_md(week!)} ~ ${_md(week!.add(const Duration(days: 6)))} · 주 변경',
+                ),
+              ),
+            ),
           if (loadingChoices) const LinearProgressIndicator(),
           for (final (i, l) in lines.indexed)
             Card(
@@ -580,6 +586,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
                     _field(l, 'amount_read', '행 금액 (원)'),
                     ExpansionTile(
                       tilePadding: EdgeInsets.zero,
+                      shape: const Border(),
+                      collapsedShape: const Border(),
                       title: const Text('품목 상세 정보'),
                       children: [
                         _field(l, 'spec', '규격'),
@@ -600,20 +608,19 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
             ),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed:
-                reading || saving || !ready || type == null || lines.isEmpty
-                    ? null
-                    : _save,
-            child: Text(saving
-                ? '저장 중'
-                : store == _newChoice
-                    ? '새 점포 등록하고 원본 저장'
-                    : supplier == _newChoice
-                    ? '거래처 등록하고 원본 저장'
-                    : '판독값 확인하고 저장'),
+            onPressed: reading || saving || !ready || type == null || lines.isEmpty ? null : _save,
+            child: Text(
+              saving
+                  ? '저장 중'
+                  : store == _newChoice
+                  ? '새 점포 등록하고 원본 저장'
+                  : supplier == _newChoice
+                  ? '거래처 등록하고 원본 저장'
+                  : '판독값 확인하고 저장',
+            ),
           ),
         ],
-      ],
+      ], 16),
     );
     return Scaffold(
       appBar: AppBar(
@@ -642,10 +649,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
                   Expanded(
                     child: InteractiveViewer(
                       maxScale: 8,
-                      child: Image.memory(
-                        widget.file.bytes!,
-                        fit: BoxFit.contain,
-                      ),
+                      child: Image.memory(widget.file.bytes!, fit: BoxFit.contain),
                     ),
                   ),
                   const VerticalDivider(width: 1),
@@ -661,24 +665,32 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
 Future<void> startPhotoReview(BuildContext context) async {
   late final PlatformFile file;
   try {
-    if ([TargetPlatform.android, TargetPlatform.iOS]
-        .contains(defaultTargetPlatform)) {
+    if ([TargetPlatform.android, TargetPlatform.iOS].contains(defaultTargetPlatform)) {
       final source = await showModalBottomSheet<ImageSource>(
-          context: context,
-          builder: (ctx) => SafeArea(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                ListTile(
-                    leading: const Icon(Icons.photo_camera),
-                    title: const Text('사진 촬영'),
-                    onTap: () => Navigator.pop(ctx, ImageSource.camera)),
-                ListTile(
-                    leading: const Icon(Icons.photo_library),
-                    title: const Text('앨범에서 선택'),
-                    onTap: () => Navigator.pop(ctx, ImageSource.gallery))
-              ])));
+        context: context,
+        builder: (ctx) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera),
+                title: const Text('사진 촬영'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('앨범에서 선택'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      );
       if (source == null) return;
-      final photo = await ImagePicker()
-          .pickImage(source: source, preferredCameraDevice: CameraDevice.rear);
+      final photo = await ImagePicker().pickImage(
+        source: source,
+        preferredCameraDevice: CameraDevice.rear,
+      );
       if (photo == null) return;
       final length = await photo.length();
       if (length > 10485760) {
@@ -689,12 +701,10 @@ Future<void> startPhotoReview(BuildContext context) async {
       final ext = bytes.length >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8
           ? 'jpg'
           : bytes.length >= 8 && bytes[0] == 0x89 && bytes[1] == 0x50
-              ? 'png'
-              : bytes.length >= 12 &&
-                      ascii.decode(bytes.sublist(8, 12), allowInvalid: true) ==
-                          'WEBP'
-                  ? 'webp'
-                  : null;
+          ? 'png'
+          : bytes.length >= 12 && ascii.decode(bytes.sublist(8, 12), allowInvalid: true) == 'WEBP'
+          ? 'webp'
+          : null;
       if (ext == null) {
         if (context.mounted) notify(context, 'PNG·JPEG·WebP 사진을 선택해 주세요.');
         return;
@@ -703,15 +713,15 @@ Future<void> startPhotoReview(BuildContext context) async {
       file = PlatformFile(name: '$name.$ext', size: length, bytes: bytes);
     } else {
       final picked = await FilePicker.platform.pickFiles(
-          type: FileType.custom,
-          allowedExtensions: ['png', 'jpg', 'jpeg', 'webp'],
-          withData: true);
+        type: FileType.custom,
+        allowedExtensions: ['png', 'jpg', 'jpeg', 'webp'],
+        withData: true,
+      );
       if (picked == null || picked.files.single.bytes == null) return;
       file = picked.files.single;
     }
   } catch (_) {
-    if (context.mounted)
-      notify(context, '사진을 열 수 없습니다. 카메라 권한을 확인하거나 앨범에서 선택해 주세요.');
+    if (context.mounted) notify(context, '사진을 열 수 없습니다. 카메라 권한을 확인하거나 앨범에서 선택해 주세요.');
     return;
   }
   if (!context.mounted) return;
