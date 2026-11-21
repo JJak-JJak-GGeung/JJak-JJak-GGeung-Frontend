@@ -297,7 +297,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       if (amount != draft[entry.key]) overrides[entry.key] = amount;
     }
     final edits = <Json>[];
-    for (final l in lines) {
+    final originalLines = objects(draft['lines']);
+    for (final (index, l) in lines.indexed) {
       String? val(String k) {
         final t = l[k]?.toString().trim() ?? '';
         return t.isEmpty ? null : t;
@@ -325,7 +326,16 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         setState(() => error = '품목명과 숫자 형식을 확인해 주세요. 모르는 수량·가격은 비워 둘 수 있습니다.');
         return;
       }
+      final deliveryDate = val('delivery_date');
+      final parsedDelivery = DateTime.tryParse(deliveryDate ?? '');
+      if (deliveryDate != null && (parsedDelivery == null || day(parsedDelivery) != deliveryDate)) {
+        setState(() => error = '품목 ${index + 1}의 납품·수령일을 YYYY-MM-DD로 확인해 주세요.');
+        return;
+      }
       edits.add({
+        if (preview?['line_reference_edits'] == true)
+          for (final key in ['delivery_no', 'delivery_date'])
+            if (val(key) != originalLines[index][key]) key: val(key),
         'item': val('item'),
         'unit': val('unit'),
         'qty_read': val('qty_read'),
@@ -555,6 +565,10 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
                   children: [
                     Text('품목 ${i + 1}', style: Txt.section),
                     _field(l, 'item', '품목명'),
+                    if (preview?['line_reference_edits'] == true) ...[
+                      _field(l, 'delivery_no', '연결할 납품명세 번호'),
+                      _field(l, 'delivery_date', '납품·수령일 (YYYY-MM-DD)'),
+                    ],
                     Row(
                       children: [
                         Expanded(child: _field(l, 'qty_read', '수량')),
