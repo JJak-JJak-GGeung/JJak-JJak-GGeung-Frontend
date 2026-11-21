@@ -304,7 +304,7 @@ List<String> approvalReasons(Object? blockers) {
   return {
     for (final code in blockers)
       if (groupInvoice && invoiceChecks.contains(code))
-        '이번 정산에 적용할 청구서의 기간과 금액을 확인해 주세요'
+        '이번 주 청구서를 올리거나, 올린 청구서의 기간과 금액을 확인해 주세요.'
       else
         blockerText(code),
   }.toList();

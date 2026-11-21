@@ -24,7 +24,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(plain('승인 전에 확인할 것'), 120,
         scrollable: find.byType(Scrollable).first);
-    expect(plain('이번 정산에 적용할 청구서의 기간과 금액을 확인해 주세요'), findsOneWidget);
+    expect(plain('이번 주 청구서를 올리거나, 올린 청구서의 기간과 금액을 확인해 주세요.'), findsOneWidget);
     expect(plain('정산 자료를 다시 확인해 주세요'), findsOneWidget);
     expect(plain('청구와 수령 수량이 다릅니다'), findsOneWidget);
     for (final code in codes) {
