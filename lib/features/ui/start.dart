@@ -52,7 +52,9 @@ class _StartScreenState extends ConsumerState<StartScreen> {
     });
   }
 
-  /// Connected builds open the photo first. The offline demo uses sample periods.
+  /// Upload button. Connected builds open the photo first; the offline demo
+  /// picks store, supplier and period in a sheet, then opens that period's
+  /// upload screen.
   Future<void> _openUpload() async {
     if (!demo) {
       await startPhotoReview(context);
@@ -80,13 +82,26 @@ class _StartScreenState extends ConsumerState<StartScreen> {
   Widget build(BuildContext context) => Screen(
         title: '짝짜꿍',
         leading: false,
-        floatingActionButton: FloatingActionButton.large(
-          onPressed: _openUpload,
-          tooltip: '사진 올리기',
-          backgroundColor: Palette.primary,
-          foregroundColor: Colors.white,
-          shape: const CircleBorder(),
-          child: const Icon(Icons.photo_camera, size: 34),
+        floatingActionButton: Semantics(
+          button: true,
+          label: '사진 올리기',
+          child: Tooltip(
+            message: '사진 올리기',
+            child: Material(
+              shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
+              elevation: 6,
+              color: Palette.primary,
+              // Ink.image keeps the tap ripple visible on top of the icon.
+              child: Ink.image(
+                image: const AssetImage('assets/upload_icon.png'),
+                width: 96,
+                height: 96,
+                fit: BoxFit.cover,
+                child: InkWell(onTap: _openUpload),
+              ),
+            ),
+          ),
         ),
         children: [
           const Text('주간 정산을 열 점포를 고르세요', style: Txt.title),
