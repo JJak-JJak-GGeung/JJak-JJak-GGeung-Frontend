@@ -175,15 +175,8 @@ class _BillCard extends StatelessWidget {
             : '받은 청구서 기준';
     return TintCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(keepWords('이번 주 청구액'), style: Txt.section),
-              const SizedBox(height: 4),
-              Text(basis, style: Txt.label),
-            ]),
-          ),
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          Expanded(child: Text(keepWords('이번 주 청구액'), style: Txt.section)),
           const SizedBox(width: 12),
           Flexible(
             child: FittedBox(
@@ -194,11 +187,13 @@ class _BillCard extends StatelessWidget {
             ),
           ),
         ]),
+        const SizedBox(height: 4),
+        Text(keepWords(basis), style: Txt.label),
         const SizedBox(height: 12),
         const Divider(height: 1, color: Palette.line),
         const SizedBox(height: 10),
         Text(
-            '주간 합계 · 청구 ${qtyText(summary, 'billed_qty')} · 실수령 ${receivedText(summary)}',
+            keepWords('주간 합계 · 청구 ${qtyText(summary, 'billed_qty')} · 실수령 ${receivedText(summary)}'),
             style: Txt.label),
       ]),
     );
