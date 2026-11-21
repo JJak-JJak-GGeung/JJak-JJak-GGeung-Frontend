@@ -151,6 +151,8 @@ void main() {
         'doc_type': 'DELIVERY',
         'store_name_read': '점포',
         'doc_date': '2026-01-02',
+        'deposit_amount': 25,
+        'tax_total': null,
         'lines': [
           {'item': '채소', 'qty_read': '4', 'unit': 'kg'}
         ]
@@ -176,17 +178,27 @@ void main() {
     await tester.tap(find.text('사진 선택'));
     await tester.pumpAndSettle();
     expect(api.uploads, ['/api/photo-previews']);
+    for (final entry in {'입금액 (원)': '', '세액 합계 (원)': '0'}.entries) {
+      final input = find.widgetWithText(TextFormField, entry.key);
+      await tester.ensureVisible(input);
+      await tester.enterText(input, entry.value);
+    }
     final qty = find.widgetWithText(TextFormField, '수량');
     await tester.scrollUntilVisible(qty, 180,
         scrollable: find.byType(Scrollable).first);
     await tester.enterText(qty, '3');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
     final save = find.text('판독값 확인하고 저장');
     await tester.scrollUntilVisible(save, 180,
         scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
     await tester.tap(save);
     await tester.pumpAndSettle();
     final confirmed = jsonDecode(api.confirmed['review_json']!);
     expect(confirmed['lines'][0]['qty_read'], '3');
+    expect(confirmed['statement_amounts'], {'deposit_amount': null, 'tax_total': 0});
     expect(confirmed['supplier_id'], 'supplier');
     expect(destination, '/period/period/upload?document=document-1');
     expect(api.uploads, ['/api/photo-previews', '/api/photo-previews/confirm']);
