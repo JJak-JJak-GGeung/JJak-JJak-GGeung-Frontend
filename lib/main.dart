@@ -855,6 +855,15 @@ class Approval extends ConsumerWidget {
                   : (info['payment_status'] ?? '송금 미확인').toString()),
               sources(context, info),
               for (final row in objects(info['items'])) sources(context, row),
+              const SizedBox(height: 16),
+              const Text('승인 당시 원본'),
+              for (final doc in objects(info['documents']))
+                if (doc['source_mode'] == 'FILE') ListTile(
+                  title: Text((doc['doc_no'] ?? doc['filename'] ?? '원본').toString()),
+                  subtitle: Text((doc['doc_type'] ?? '').toString()),
+                  trailing: const Icon(Icons.image_outlined),
+                  onTap: () => original(context, {'document_id': doc['id']}),
+                ),
             ]);
       }));
 }
