@@ -1,11 +1,12 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 import 'package:record/record.dart';
 
+import '../../recording_io.dart' if (dart.library.js_interop) '../../recording_web.dart';
 import 'shared.dart';
 
 /// SCR-06 확인 카드. One delivery row of the period with its three records,
@@ -100,10 +101,10 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
         _openReview(voice: _keepVoice);
         return;
       }
-      final opus = await _recorder.isEncoderSupported(AudioEncoder.opus);
+      final opus = kIsWeb && await _recorder.isEncoderSupported(AudioEncoder.opus);
       await _recorder.start(
           RecordConfig(encoder: opus ? AudioEncoder.opus : AudioEncoder.wav),
-          path: opus ? 'memo.webm' : 'memo.wav');
+          path: await recordingPath(opus ? 'memo.webm' : 'memo.wav'));
       if (mounted) setState(() => _recording = true);
     } catch (_) {
       if (!mounted) return;
@@ -123,13 +124,11 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
     try {
       final url = await _recorder.stop();
       if (url == null) throw StateError('no recording');
-      // On the web the recorder returns a blob URL.
-      final audio = await http.get(Uri.parse(url));
-      if (audio.statusCode != 200 || audio.bodyBytes.isEmpty) throw StateError('empty recording');
-      final mime = audio.headers['content-type']?.split(';').first ?? 'audio/webm';
+      // Web returns a blob URL, Android a temp file path.
+      final (bytes: bytes, mime: mime) = await readRecording(url);
+      if (bytes.isEmpty) throw StateError('empty recording');
       final extension = switch (mime) { 'audio/wav' => 'wav', 'audio/ogg' => 'ogg', _ => 'webm' };
-      final response =
-          await backend.upload('/api/transcriptions', audio.bodyBytes, 'memo.$extension', mime);
+      final response = await backend.upload('/api/transcriptions', bytes, 'memo.$extension', mime);
       if (!mounted) return;
       _memo.text = (response['draft_text'] ?? '').toString();
       _openReview(voice: true);
