@@ -18,6 +18,7 @@ class _StartScreenState extends ConsumerState<StartScreen> {
   late Future<List<Json>> stores;
   Future<List<Json>>? suppliers;
   Future<List<Json>>? periods;
+  bool directoryReady = false;
   Json? store;
   Json? supplier;
 
@@ -27,8 +28,12 @@ class _StartScreenState extends ConsumerState<StartScreen> {
     stores = _loadStores();
   }
 
-  Future<List<Json>> _loadStores() async =>
-      records(await backend.get('/api/stores'), 'stores');
+  Future<List<Json>> _loadStores() async {
+    final result = object(await backend.get('/api/stores'));
+    final enabled = !demo && result['directory_registration'] == true;
+    if (mounted && directoryReady != enabled) setState(() => directoryReady = enabled);
+    return records(result, 'stores');
+  }
 
   void _pickStore(Json row) {
     ref.read(pickedNames.notifier).state = {'store': row['name'].toString()};
@@ -175,11 +180,11 @@ class _StartScreenState extends ConsumerState<StartScreen> {
           label: '점포',
           rows: rows,
           selected: store,
-          empty: '점포 이름을 입력하거나 사진에서 상호를 확인해 첫 점포를 등록하세요.',
+          empty: directoryReady ? '점포 이름을 입력하거나 사진에서 상호를 확인해 첫 점포를 등록하세요.' : '사진을 올리고 상호를 확인하면 첫 점포를 등록할 수 있어요.',
           onPick: _pickStore,
         ),
       ),
-      if (!demo)
+      if (directoryReady)
         TextButton.icon(onPressed: () => _register(), icon: const Icon(Icons.add_business_outlined), label: const Text('점포 직접 등록')),
       if (suppliers != null) ...[
         const SizedBox(height: 16),
@@ -196,9 +201,9 @@ class _StartScreenState extends ConsumerState<StartScreen> {
           ),
         ),
       ],
-      if (!demo && store != null)
+      if (directoryReady && store != null)
         TextButton.icon(onPressed: () => _register(parent: store), icon: const Icon(Icons.add), label: const Text('거래처 직접 등록')),
-      if (!demo)
+      if (directoryReady)
         TextButton(onPressed: () => openSampleDelivery(context, backend), child: const Text('합성 명세표로 연습')),
       if (periods != null) ...[
         const SectionTitle('정산 기간', caption: '열어 볼 주를 고르세요.'),
@@ -561,7 +566,7 @@ class _UploadTargetSheetState extends State<_UploadTargetSheet> {
                   store,
                   (r) => r['name'].toString(),
                   _pickStore,
-                  empty: '점포 이름을 입력하거나 사진에서 상호를 확인해 첫 점포를 등록하세요.',
+                  empty: '사진을 올리고 상호를 확인하면 첫 점포를 등록할 수 있어요.',
                 ),
                 if (store != null)
                   ..._section(
