@@ -191,6 +191,71 @@ void main() {
     expect(destination, '/period/period/upload?document=document-1');
     expect(api.uploads, ['/api/photo-previews', '/api/photo-previews/confirm']);
   });
+  testWidgets('판독 다시 시도는 실패한 문서의 종류·점포·거래처·기간을 그대로 쓴다', (tester) async {
+    final api = TestBackend();
+    api.choices.addAll({
+      '/api/stores': {
+        'stores': [
+          {'id': 'read-store', 'name': '읽은 점포'},
+          {'id': 'kept-store', 'name': '기존 점포'},
+        ]
+      },
+      '/api/suppliers?store_id=kept-store': {
+        'suppliers': [
+          {'id': 'read-supplier', 'name': '읽은 거래처'},
+          {'id': 'kept-supplier', 'name': '기존 거래처'},
+        ]
+      },
+      '/api/periods?store_id=kept-store&supplier_id=kept-supplier': {
+        'periods': [
+          {'period_id': 'other-week', 'period_start': '2026-03-02', 'period_end': '2026-03-08', 'label': '다른 주'},
+          {'period_id': 'kept-week', 'period_start': '2026-01-05', 'period_end': '2026-01-11', 'label': '기존 주'},
+        ]
+      },
+    });
+    // GPT reads another type, store, supplier and a date in another week.
+    api.pending.complete({
+      'signature': 'sig',
+      'draft': {
+        'store_name_read': '읽은 점포',
+        'supplier_name_read': '읽은 거래처',
+        'doc_type': 'RECEIPT',
+        'doc_date': '2026-03-03',
+        'lines': [
+          {'item': '채소', 'qty_read': '4', 'unit': 'kg'}
+        ]
+      }
+    });
+    await tester.pumpWidget(ProviderScope(
+        child: MaterialApp(
+            home: Builder(
+                builder: (ctx) => Scaffold(
+                    body: TextButton(
+                        onPressed: () => Navigator.of(ctx).push<String>(
+                            MaterialPageRoute(
+                                builder: (_) => PhotoReview(
+                                    PlatformFile(name: 'original.png', bytes: bytes, size: bytes.length),
+                                    api: api,
+                                    existing: const {
+                                      'doc_type': 'DELIVERY',
+                                      'store_id': 'kept-store',
+                                      'supplier_id': 'kept-supplier',
+                                      'period_id': 'kept-week',
+                                    }))),
+                        child: const Text('다시 시도')))))));
+    await tester.tap(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+    final save = find.text('판독값 확인하고 저장');
+    await tester.scrollUntilVisible(save, 180, scrollable: find.byType(Scrollable).first);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    final confirmed = jsonDecode(api.confirmed['review_json']!);
+    expect(confirmed['doc_type'], 'DELIVERY');
+    expect(confirmed['store_id'], 'kept-store');
+    expect(confirmed['supplier_id'], 'kept-supplier');
+    expect(confirmed['period_id'], 'kept-week');
+    expect(confirmed.containsKey('supplier_name'), isFalse);
+  });
   for (final mode in ['empty', 'match', 'different']) {
     final firstStore = mode != 'match';
     testWidgets('사진 한 장으로 새 거래처와 원본 확인 저장 mode=$mode',

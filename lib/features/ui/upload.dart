@@ -101,7 +101,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     });
   }
 
-  Future<void> _retryExtraction(Json doc) => _run(() async {
+  Future<void> _retryExtraction(Json data, Json doc) => _run(() async {
         if (!demo) {
           final bytes = await backend.original(doc['document_id'].toString());
           if (!mounted) return;
@@ -109,7 +109,16 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
               ? 'jpg' : bytes.length > 11 && bytes[0] == 0x52 && bytes[8] == 0x57 ? 'webp' : 'png';
           final filename = (doc['filename']?.toString() ?? 'original').replaceFirst(RegExp(r'\.[^.]+$'), '');
           final route = await Navigator.of(context).push<String>(MaterialPageRoute(
-            builder: (_) => PhotoReview(PlatformFile(name: '$filename.$ext', bytes: bytes, size: bytes.length)),
+            builder: (_) => PhotoReview(
+              PlatformFile(name: '$filename.$ext', bytes: bytes, size: bytes.length),
+              // Same document, store, supplier and week as the failed reading.
+              existing: {
+                'doc_type': doc['doc_type'],
+                'store_id': data['store_id'],
+                'supplier_id': data['supplier_id'],
+                'period_id': data['period_id'] ?? periodId,
+              },
+            ),
           ));
           if (mounted && route != null) {
             setState(() => lastUpload = null);
@@ -443,7 +452,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
           const Text('원본은 저장되어 있습니다. 같은 원본으로 판독을 다시 시도할 수 있어요.', style: Txt.label),
           const SizedBox(height: 8),
           OutlinedButton(
-            onPressed: busy ? null : () => _retryExtraction(doc),
+            onPressed: busy ? null : () => _retryExtraction(data, doc),
             child: const Text('판독 다시 시도'),
           ),
         ],
