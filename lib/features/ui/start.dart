@@ -145,6 +145,8 @@ class _StartScreenState extends ConsumerState<StartScreen> {
       ),
     ),
     children: [
+      Text('안녕하세요 admin님', style: Txt.section.copyWith(color: Palette.primary)),
+      const SizedBox(height: 6),
       const Text('주간 정산을 열 점포를 고르세요', style: Txt.title),
       const SizedBox(height: 8),
       const Text('점포와 거래처를 고르면 그 주의 청구·납품·수령 기록을 함께 봅니다.', style: Txt.label),
