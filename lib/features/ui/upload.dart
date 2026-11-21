@@ -102,6 +102,22 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
   }
 
   Future<void> _retryExtraction(Json doc) => _run(() async {
+        if (!demo) {
+          final bytes = await backend.original(doc['document_id'].toString());
+          if (!mounted) return;
+          final ext = bytes.length > 2 && bytes[0] == 0xff && bytes[1] == 0xd8
+              ? 'jpg' : bytes.length > 11 && bytes[0] == 0x52 && bytes[8] == 0x57 ? 'webp' : 'png';
+          final filename = (doc['filename']?.toString() ?? 'original').replaceFirst(RegExp(r'\.[^.]+$'), '');
+          final route = await Navigator.of(context).push<String>(MaterialPageRoute(
+            builder: (_) => PhotoReview(PlatformFile(name: '$filename.$ext', bytes: bytes, size: bytes.length)),
+          ));
+          if (mounted && route != null) {
+            setState(() => lastUpload = null);
+            refreshPeriod(ref, periodId);
+            context.go(route);
+          }
+          return;
+        }
         final result =
             await backend.post('/api/documents/${part(doc['document_id'])}/extraction', {});
         if (!mounted) return;

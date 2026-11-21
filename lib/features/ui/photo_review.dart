@@ -96,7 +96,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         final date = DateTime.tryParse(proposedDate(draft) ?? '');
         if (date != null && date.year >= 1900 && date.year < 2200)
           week = monday(date);
-        type = draft['doc_type'] as String?;
+        type = photoTypes.contains(draft['doc_type']) ? draft['doc_type'] as String : null;
         reading = false;
       });
       await _loadStores();
