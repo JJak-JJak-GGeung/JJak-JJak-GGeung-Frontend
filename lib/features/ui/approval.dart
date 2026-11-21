@@ -147,6 +147,7 @@ class _ApproveScreenState extends ConsumerState<ApproveScreen> {
     final data = value.valueOrNull;
     return Screen(
       title: '정산표 승인',
+      homeEnabled: !_busy,
       children: [
         if (_stale)
           const Padding(

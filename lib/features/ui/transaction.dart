@@ -274,6 +274,7 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
     final receiptsKnown = detail.hasValue && !detail.hasError;
     return Screen(
       title: title,
+      homeEnabled: !_busy && !_recording,
       children: [
         ...header,
         ...gap([
@@ -362,6 +363,8 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
 
   Widget _review(String title, List<Widget> header, Json tx, Object? revision) => Screen(
         title: title,
+        homeEnabled: !_busy && !_recording,
+        homeDraft: true,
         children: [
           ...header,
           InfoRow('거래처 명세서', qtyText(tx, 'declared_qty')),

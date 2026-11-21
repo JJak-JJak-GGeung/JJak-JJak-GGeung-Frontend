@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'shared.dart';
+import 'start_button.dart';
 
 /// Call recording file types the transcription server accepts.
 const callExtensions = ['m4a', 'mp4', 'mp3', 'wav', 'webm', 'ogg', 'flac'];
@@ -251,7 +252,9 @@ class _CallRecordingReviewState extends ConsumerState<CallRecordingReview> {
   Widget build(BuildContext context) {
     final errorStyle = TextStyle(color: Theme.of(context).colorScheme.error);
     return Scaffold(
-      appBar: AppBar(title: const Text('통화녹음으로 메모 남기기')),
+      appBar: AppBar(title: const Text('통화녹음으로 메모 남기기'), actions: [
+        StartButton(enabled: !saving, draft: memo.text.isNotEmpty || !reading, returnRoute: true),
+      ]),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -395,6 +398,7 @@ Future<void> startCallRecording(BuildContext context) async {
   ).push<String>(MaterialPageRoute(builder: (_) => CallRecordingReview(file)));
   if (context.mounted && route != null) {
     context.go(route);
+    if (route == '/') return;
     notify(context, '통화 메모를 저장했습니다. 이 거래만 다시 대조합니다.');
   }
 }
