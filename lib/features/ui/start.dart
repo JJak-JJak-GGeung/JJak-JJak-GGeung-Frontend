@@ -62,6 +62,49 @@ class _StartScreenState extends ConsumerState<StartScreen> {
     });
   }
 
+  bool _openingWeek = false;
+
+  /// Week picker: the last eight Monday-to-Sunday weeks. A week without a
+  /// period is opened on the server (POST /api/periods) before navigating.
+  Future<void> _pickWeek(List<Json> existing) async {
+    final byStart = {for (final p in existing) p['period_start']?.toString(): p};
+    final week = await showModalBottomSheet<DateTime>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: Palette.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      constraints: const BoxConstraints(maxWidth: 560),
+      builder: (_) => _WeekSheet(existingStarts: byStart.keys.whereType<String>().toSet()),
+    );
+    if (week == null || !mounted) return;
+    final start = isoDate(week);
+    final known = byStart[start];
+    if (known != null) {
+      context.go(periodRoute(known['period_id'].toString()));
+      return;
+    }
+    final storeRow = store!, supplierRow = supplier!;
+    setState(() => _openingWeek = true);
+    try {
+      final opened = await backend.post('/api/periods', {
+        'store_id': storeRow['id'],
+        'supplier_id': supplierRow['id'],
+        'week_start': start,
+      });
+      // Drop the reply if the owner switched 점포 or 거래처 meanwhile, so the
+      // period never opens under another supplier's name.
+      if (!mounted || !identical(store, storeRow) || !identical(supplier, supplierRow)) return;
+      context.go(periodRoute(opened['period_id'].toString()));
+    } catch (e) {
+      if (mounted) notify(context, e);
+    } finally {
+      if (mounted) setState(() => _openingWeek = false);
+    }
+  }
+
   Future<void> _register({Json? parent}) async {
     final row = await showDialog<Json>(
       context: context, barrierDismissible: false,
@@ -206,25 +249,36 @@ class _StartScreenState extends ConsumerState<StartScreen> {
       if (directoryReady)
         TextButton(onPressed: () => openSampleDelivery(context, backend), child: const Text('합성 명세표로 연습')),
       if (periods != null) ...[
-        const SectionTitle('정산 기간', caption: '열어 볼 주를 고르세요.'),
+        const SectionTitle(
+          '정산 기간',
+          caption: '조회할 주를 고르세요. 사진을 확정하면 그 주가 자동으로 생깁니다.',
+        ),
         _Pending(
           future: periods!,
           retry: () => _pickSupplier(supplier!),
-          render: (rows) => rows.isEmpty
-              ? const Text('조회할 정산 기간이 없습니다.', style: Txt.body)
-              : Column(
-                  children: gap([
-                    for (final row in rows)
-                      InfoRow(
-                        periodText(row),
-                        '열기',
-                        caption: row['label']?.toString(),
-                        onTap: () => context.go(
-                          periodRoute(row['period_id'].toString()),
-                        ),
-                      ),
-                  ], 10),
-                ),
+          render: (rows) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (rows.isEmpty)
+                const Text('아직 자료가 있는 주가 없습니다. 아래에서 조회할 주를 고르세요.', style: Txt.body)
+              else
+                ...gap([
+                  for (final row in rows)
+                    InfoRow(
+                      periodText(row),
+                      '열기',
+                      caption: row['label']?.toString(),
+                      onTap: () => context.go(periodRoute(row['period_id'].toString())),
+                    ),
+                ], 10),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _openingWeek ? null : () => _pickWeek(rows),
+                icon: const Icon(Icons.date_range_outlined),
+                label: Text(_openingWeek ? '여는 중…' : '다른 주 조회'),
+              ),
+            ],
+          ),
         ),
       ],
     ],
@@ -623,6 +677,58 @@ class _UploadTargetSheetState extends State<_UploadTargetSheet> {
       ),
     ),
   );
+}
+
+/// `2026-11-09`
+String isoDate(DateTime d) =>
+    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+/// Lists the current week and the seven before it (Monday starts).
+class _WeekSheet extends StatelessWidget {
+  const _WeekSheet({required this.existingStarts});
+  final Set<String> existingStarts;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final monday = today.subtract(Duration(days: today.weekday - 1));
+    final weeks = [for (var i = 0; i < 8; i++) monday.subtract(Duration(days: 7 * i))];
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.75),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 4),
+            child: Text('조회할 주 선택', style: Txt.section),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Text('월요일부터 일요일까지 한 주씩 정산합니다.', style: Txt.label),
+          ),
+          Flexible(
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              itemCount: weeks.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, i) {
+                final start = weeks[i];
+                final end = start.add(const Duration(days: 6));
+                final has = existingStarts.contains(isoDate(start));
+                return _OptionTile(
+                  text: periodText({'period_start': isoDate(start), 'period_end': isoDate(end)}),
+                  caption: [if (i == 0) '이번 주', has ? '자료 있음' : '새로 열기'].join(' · '),
+                  selected: has,
+                  onTap: () => Navigator.pop(context, start),
+                );
+              },
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
 }
 
 /// Loading / error wrapper for a one-off request.
