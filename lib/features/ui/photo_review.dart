@@ -359,8 +359,17 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         child: TextFormField(
           initialValue: line[key]?.toString() ?? '',
           enabled: !saving,
-          decoration: InputDecoration(labelText: label),
-          onChanged: (v) => line[key] = v,
+          decoration: InputDecoration(
+            labelText: label,
+            errorText: key == 'unit' && unitContainsQuantity(line[key]?.toString())
+                ? '수량은 왼쪽에, 단위는 kg처럼 입력하세요.'
+                : null,
+            errorMaxLines: 3,
+          ),
+          onChanged: (v) {
+            line[key] = v;
+            if (key == 'unit') setState(() {});
+          },
         ),
       );
 
@@ -487,7 +496,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
           const SizedBox(height: 12),
           FilledButton(
             onPressed:
-                reading || saving || !ready || type == null || lines.isEmpty
+                reading || saving || !ready || type == null || lines.isEmpty ||
+                        lines.any((l) => unitContainsQuantity(l['unit']?.toString()))
                     ? null
                     : _save,
             child: Text(saving

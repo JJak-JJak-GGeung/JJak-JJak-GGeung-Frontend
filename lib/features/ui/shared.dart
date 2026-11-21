@@ -150,12 +150,22 @@ abstract final class Txt {
 
 // --------------------------------------------------------------- formatting
 
+final _quantityWithUnit = RegExp(
+  r'^[+-]?(?:[0-9][0-9,]*(?:\.[0-9]+)?|\.[0-9]+)\s*(?:kg|g|mg|t|l|ml|㎏|㎖|개|박스|상자|봉|포|팩|병|통|마리|근|톤|장|세트|묶음)?$',
+  caseSensitive: false,
+);
+
+bool unitContainsQuantity(String? unit) =>
+    unit != null && _quantityWithUnit.hasMatch(unit.trim());
+
 /// "36kg" or "실입고 미확인" for a null received quantity. A confirmed zero
 /// stays "0kg" (R01).
 String qtyText(Json row, String field, {String missing = '미확인'}) {
   final value = row[field];
   if (value == null) return missing;
-  return '$value${row['unit'] ?? ''}';
+  final unit = row['unit']?.toString() ?? '';
+  if (unitContainsQuantity(unit)) return '$value (단위 확인 · $unit)';
+  return '$value$unit';
 }
 
 String receivedText(Json row) =>
