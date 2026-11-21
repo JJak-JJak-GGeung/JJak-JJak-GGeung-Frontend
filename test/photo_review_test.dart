@@ -149,6 +149,7 @@ void main() {
       'draft': {
         'supplier_name_read': '샘플',
         'doc_type': 'DELIVERY',
+        'store_name_read': '점포',
         'doc_date': '2026-01-02',
         'lines': [
           {'item': '채소', 'qty_read': '4', 'unit': 'kg'}
@@ -190,8 +191,9 @@ void main() {
     expect(destination, '/period/period/upload?document=document-1');
     expect(api.uploads, ['/api/photo-previews', '/api/photo-previews/confirm']);
   });
-  for (final firstStore in [false, true]) {
-    testWidgets('사진 한 장으로 새 거래처와 원본 확인 저장 firstStore=$firstStore',
+  for (final mode in ['empty', 'match', 'different']) {
+    final firstStore = mode != 'match';
+    testWidgets('사진 한 장으로 새 거래처와 원본 확인 저장 mode=$mode',
         (tester) async {
       final api = TestBackend();
       tester.view.physicalSize = const Size(390, 844);
@@ -199,10 +201,10 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       api.choices['/api/stores'] = {
-        'stores': firstStore
+        'stores': mode == 'empty'
             ? []
             : [
-                {'id': 'shop', 'name': '우리 점포'}
+                {'id': 'shop', 'name': mode == 'different' ? '기존 점포' : '우리 점포'}
               ]
       };
       api.choices['/api/suppliers?store_id=shop'] = {
@@ -230,6 +232,13 @@ void main() {
                   api: api))));
       await tester.pumpAndSettle();
       expect(api.uploads, ['/api/photo-previews']);
+      if (firstStore) {
+        final add = find.text('이 이름으로 새 점포 등록하기');
+        await tester.ensureVisible(add);
+        await tester.tap(add);
+        await tester.pumpAndSettle();
+        expect(api.uploads, ['/api/photo-previews']);
+      }
       final tradeDate = find.widgetWithText(TextFormField, '원본 거래일');
       await tester.scrollUntilVisible(tradeDate, 180, scrollable: find.byType(Scrollable).first);
       await tester.enterText(tradeDate, '2025-01-31');
@@ -239,7 +248,7 @@ void main() {
       await tester.enterText(vendor, '확인한 수산');
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
-      final save = find.widgetWithText(FilledButton, '거래처 등록하고 원본 저장');
+      final save = find.widgetWithText(FilledButton, firstStore ? '새 점포 등록하고 원본 저장' : '거래처 등록하고 원본 저장');
       await tester.scrollUntilVisible(save, 180,
           scrollable: find.byType(Scrollable).first);
       await tester.pumpAndSettle();

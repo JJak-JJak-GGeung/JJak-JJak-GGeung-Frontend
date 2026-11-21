@@ -119,14 +119,10 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         stores = shops;
         storesLoaded = true;
       });
-      if (shops.isEmpty) await _store(_newChoice);
-      if (shops.length == 1) await _store(shops.single['id']);
-      if (shops.length > 1 && shopName.trim().isNotEmpty) {
-        final matches = shops
-            .where((s) => s['name']?.toString().trim() == shopName.trim())
-            .toList();
-        if (matches.length == 1) await _store(matches.single['id']);
-      }
+      final name = shopName.trim().toLowerCase();
+      final matches = shops.where((s) => name.isNotEmpty &&
+          s['name']?.toString().trim().toLowerCase() == name).toList();
+      if (matches.length == 1) await _store(matches.single['id']);
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
     } finally {
@@ -162,7 +158,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         suppliersLoaded = true;
       });
       String norm(Object? v) =>
-          (v ?? '').toString().replaceAll(RegExp(r'\s+'), '');
+          (v ?? '').toString().trim().toLowerCase();
       final name = norm(object(preview?['draft'])['supplier_name_read']);
       final matches = list
           .where((s) => name.isNotEmpty && norm(s['name']) == name)
@@ -402,6 +398,15 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
               onPressed: _loadStores,
               child: const Text('점포 목록 다시 불러오기'),
             ),
+          if (storesLoaded && store == null && !loadingChoices) ...[
+            Text(shopName.trim().isEmpty
+                ? '공급받는 점포 이름을 확인해 주세요.'
+                : '사진의 공급받는 곳은 ‘$shopName’입니다. 저장할 점포를 선택해 주세요.'),
+            if (shopName.trim().isNotEmpty && !stores.any((s) =>
+                s['name']?.toString().trim().toLowerCase() == shopName.trim().toLowerCase()))
+              OutlinedButton(onPressed: () => _store(_newChoice),
+                child: const Text('이 이름으로 새 점포 등록하기')),
+          ],
           _choice(
               '내 점포',
               store,
@@ -487,7 +492,9 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
                     : _save,
             child: Text(saving
                 ? '저장 중'
-                : supplier == _newChoice
+                : store == _newChoice
+                    ? '새 점포 등록하고 원본 저장'
+                    : supplier == _newChoice
                     ? '거래처 등록하고 원본 저장'
                     : '판독값 확인하고 저장'),
           ),

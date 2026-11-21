@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'call_recording.dart';
 import 'photo_review.dart';
+import 'directory.dart';
 import 'shared.dart';
 
 /// Entry screen `/`: the owner picks 점포 → 거래처 → 정산 기간 (no login).
@@ -54,6 +55,22 @@ class _StartScreenState extends ConsumerState<StartScreen> {
           )
           .then((v) => records(v, 'periods'));
     });
+  }
+
+  Future<void> _register({Json? parent}) async {
+    final row = await showDialog<Json>(
+      context: context, barrierDismissible: false,
+      builder: (_) => RegisterNameDialog(api: backend, store: parent),
+    );
+    if (row == null || !mounted) return;
+    if (parent == null) {
+      setState(() => stores = _loadStores());
+      _pickStore(row);
+    } else {
+      _pickStore(parent);
+      _pickSupplier(row);
+    }
+    notify(context, row['created'] == true ? '${row['name']} 등록 완료' : '이미 등록된 ${row['name']}을 열었습니다.');
   }
 
   /// Upload button: the owner chooses a photo or a call recording.
@@ -158,10 +175,12 @@ class _StartScreenState extends ConsumerState<StartScreen> {
           label: '점포',
           rows: rows,
           selected: store,
-          empty: '사진을 올리고 상호를 확인하면 첫 점포를 등록할 수 있어요.',
+          empty: '점포 이름을 입력하거나 사진에서 상호를 확인해 첫 점포를 등록하세요.',
           onPick: _pickStore,
         ),
       ),
+      if (!demo)
+        TextButton.icon(onPressed: () => _register(), icon: const Icon(Icons.add_business_outlined), label: const Text('점포 직접 등록')),
       if (suppliers != null) ...[
         const SizedBox(height: 16),
         _Pending(
@@ -177,6 +196,10 @@ class _StartScreenState extends ConsumerState<StartScreen> {
           ),
         ),
       ],
+      if (!demo && store != null)
+        TextButton.icon(onPressed: () => _register(parent: store), icon: const Icon(Icons.add), label: const Text('거래처 직접 등록')),
+      if (!demo)
+        TextButton(onPressed: () => openSampleDelivery(context, backend), child: const Text('합성 명세표로 연습')),
       if (periods != null) ...[
         const SectionTitle('정산 기간', caption: '열어 볼 주를 고르세요.'),
         _Pending(
@@ -538,7 +561,7 @@ class _UploadTargetSheetState extends State<_UploadTargetSheet> {
                   store,
                   (r) => r['name'].toString(),
                   _pickStore,
-                  empty: '사진을 올리고 상호를 확인하면 첫 점포를 등록할 수 있어요.',
+                  empty: '점포 이름을 입력하거나 사진에서 상호를 확인해 첫 점포를 등록하세요.',
                 ),
                 if (store != null)
                   ..._section(
