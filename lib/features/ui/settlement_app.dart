@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'approval.dart';
 import 'home.dart';
+import 'phone_frame.dart';
 import 'shared.dart';
 import 'start.dart';
 import 'transaction.dart';
@@ -56,5 +57,7 @@ class SettlementApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         routerConfig: router,
         theme: appTheme(),
+        // Wide browser windows show the app inside a phone-width frame.
+        builder: (context, child) => PhoneFrame(child: child ?? const SizedBox.shrink()),
       );
 }
