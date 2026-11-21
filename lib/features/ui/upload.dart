@@ -295,7 +295,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
       bottom: [
         FilledButton(
           onPressed: () => context.go(periodRoute(periodId)),
-          child: const Text('이 거래처 정산 보기'),
+          child: Text(keepWords('이 거래처 정산 보기')),
         ),
       ],
     );
@@ -325,7 +325,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
       FilledButton.icon(
         onPressed: busy ? null : _pickAndUpload,
         icon: const Icon(Icons.add_photo_alternate_outlined),
-        label: Text(documents.isEmpty ? '사진 선택해 올리기' : '사진 더 올리기'),
+        label: Text(keepWords(documents.isEmpty ? '사진 선택해 올리기' : '사진 더 올리기')),
       ),
       if (busy) ...[
         const SizedBox(height: 10),
@@ -333,7 +333,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
       ],
       for (final id in (data['pending_removals'] as List? ?? const []))
         OutlinedButton(onPressed: busy ? null : () => _remove(id.toString()),
-          child: const Text('원본 파일 삭제 마무리')),
+          child: Text(keepWords('원본 파일 삭제 마무리'))),
       if (current != null) ...[
         const SizedBox(height: 20),
         _documentCard(data, current),
@@ -380,7 +380,8 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
 
   Future<void> _askRemove(Json doc) async {
     final accepted = await showDialog<bool>(context: context, builder: (dialog) =>
-      AlertDialog(title: const Text('올린 자료를 삭제할까요?'),
+      AlertDialog(title: Text(keepWords('올린 자료를 삭제할까요?')),
+        scrollable: true,
         content: Text('${doc['filename'] ?? '이 파일'}의 판독 행과 원본을 삭제합니다. 승인이나 확인에 쓰인 자료는 보존됩니다.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('취소')),
@@ -422,7 +423,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (isLastUpload) ...[
           StatusChip(duplicate
-              ? const Status('이미 저장된 파일입니다 · 기존 자료를 다시 보여 드려요', Tone.info)
+              ? Status(keepWords('이미 저장된 파일입니다 · 기존 자료를 다시 보여 드려요'), Tone.info)
               : const Status('원본 저장 완료', Tone.ok)),
           const SizedBox(height: 10),
         ],
@@ -431,7 +432,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         Text([
           (doc['filename'] ?? '파일명 없음').toString(),
           if (doc['doc_no'] != null) doc['doc_no'].toString(),
-        ].join(' · '), style: Txt.label),
+        ].join(' · '), style: Txt.label, maxLines: 2, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 12),
         Text('거래일 · ${doc['trade_date'] ?? '미확인'}', style: Txt.body),
         for (final entry in statementAmountLabels.entries)
@@ -470,7 +471,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         ),
         if (lines.isNotEmpty) ...[
           const SizedBox(height: 16),
-          const Text('판독한 줄 · 누르면 원본의 해당 줄을 엽니다', style: Txt.label),
+          Text(keepWords('판독한 줄 · 누르면 원본의 해당 줄을 엽니다'), style: Txt.label),
           const SizedBox(height: 8),
           for (final line in lines) ...[
             InfoRow(
@@ -533,6 +534,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
                 Expanded(
                   child: Text('연결됨 · $linkedTo',
                       style: const TextStyle(
+                          fontFamily: appFont,
                           fontSize: 13, fontWeight: FontWeight.w700, color: Palette.okInk)),
                 ),
               ])
@@ -567,7 +569,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         const SizedBox(height: 12),
         OutlinedButton(
           onPressed: () => showOriginal(context, _agreementRef(doc)),
-          child: const Text('수정 청구서 원본 보기'),
+          child: Text(keepWords('수정 청구서 원본 보기')),
         ),
         const SizedBox(height: 10),
         if (confirmed)
@@ -667,7 +669,7 @@ class _PickSheetState extends State<_PickSheet> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text(widget.title, style: Txt.title),
+              Text(keepWords(widget.title), style: Txt.title),
               const SizedBox(height: 6),
               Text(widget.guide, style: Txt.label),
               const SizedBox(height: 16),
@@ -687,7 +689,7 @@ class _PickSheetState extends State<_PickSheet> {
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: selected == null ? null : () => Navigator.pop(context, selected),
-                child: Text(widget.confirm),
+                child: Text(keepWords(widget.confirm)),
               ),
               const SizedBox(height: 8),
               OutlinedButton(
@@ -718,9 +720,9 @@ class _PickSheetState extends State<_PickSheet> {
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(c.title, style: Txt.value),
+                Text(c.title, style: Txt.value, maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
-                Text(c.caption, style: Txt.caption),
+                Text(c.caption, style: Txt.caption, maxLines: 2, overflow: TextOverflow.ellipsis),
                 if (c.match) ...[
                   const SizedBox(height: 6),
                   const StatusChip(Status('명세 번호 일치', Tone.info)),
@@ -728,7 +730,15 @@ class _PickSheetState extends State<_PickSheet> {
               ]),
             ),
             const SizedBox(width: 8),
-            Text(c.value, style: Txt.value),
+            // Amounts have no spaces: shrink instead of wrapping or overflowing.
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(c.value, style: Txt.value, maxLines: 1),
+              ),
+            ),
           ]),
         ),
       ),
@@ -752,14 +762,22 @@ class _SideCard extends StatelessWidget {
         border: Border.all(color: Palette.line),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(heading, style: Txt.caption),
+        Text(keepWords(heading), style: Txt.caption),
         const SizedBox(height: 6),
         if (c == null)
-          const Expanded(child: Text('아래 후보에서 골라 주세요', style: Txt.label))
+          Expanded(child: Text(keepWords('아래 후보에서 골라 주세요'), style: Txt.label))
         else ...[
-          Text(c.title, style: Txt.body.copyWith(fontWeight: FontWeight.w700)),
-          if (c.value.isNotEmpty) Text(c.value, style: Txt.amount),
-          Text(c.caption, style: Txt.caption),
+          Text(c.title,
+              style: Txt.body.copyWith(fontWeight: FontWeight.w700),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis),
+          if (c.value.isNotEmpty)
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(c.value, style: Txt.amount, maxLines: 1),
+            ),
+          Text(c.caption, style: Txt.caption, maxLines: 2, overflow: TextOverflow.ellipsis),
           const Spacer(),
           const SizedBox(height: 8),
           TextButton(

@@ -50,7 +50,8 @@ class _AgreementButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => OutlinedButton(
         onPressed: () => showOriginal(context, object(entry['agreement_ref'])),
-        child: Text(originalLabel(object(entry['agreement_ref'])['kind'] ?? 'CORRECTED_INVOICE')),
+        child: Text(
+            keepWords(originalLabel(object(entry['agreement_ref'])['kind'] ?? 'CORRECTED_INVOICE'))),
       );
 }
 
@@ -96,7 +97,7 @@ class _ApproveScreenState extends ConsumerState<ApproveScreen> {
     final revision = data['input_revision'];
     final confirmed = await confirmDialog(
       context,
-      title: '정산표를 승인할까요?',
+      title: keepWords('정산표를 승인할까요?'),
       confirm: '승인',
       body: Column(
         mainAxisSize: MainAxisSize.min,
@@ -155,7 +156,11 @@ class _ApproveScreenState extends ConsumerState<ApproveScreen> {
             child: TintCard(
               color: Palette.warnBg,
               child: Text('자료가 바뀌었습니다. 최신 근거를 확인한 뒤 다시 승인해 주세요.',
-                  style: TextStyle(fontSize: 14, color: Palette.warnInk, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      fontFamily: appFont,
+                      fontSize: 14,
+                      color: Palette.warnInk,
+                      fontWeight: FontWeight.w600)),
             ),
           ),
         loaded(value, _body, retry: () => ref.invalidate(settlementProvider(_periodId))),
@@ -186,7 +191,8 @@ class _ApproveScreenState extends ConsumerState<ApproveScreen> {
     return [
       FilledButton(
         onPressed: _busy || refreshing ? null : () => _approve(data),
-        child: Text(_busy ? '승인 저장 중' : '${won(data['approvable_amount'])} 확인 · 승인'),
+        child: Text(keepWords(_busy ? '승인 저장 중' : '${won(data['approvable_amount'])} 확인 · 승인'),
+            textAlign: TextAlign.center),
       ),
     ];
   }
@@ -203,31 +209,43 @@ class _ApproveScreenState extends ConsumerState<ApproveScreen> {
       StatusChip(periodStatus(data)),
       const SizedBox(height: 14),
       TintCard(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(corrected ? '합의 뒤 받은 수정 청구서' : '받은 청구서',
-                  style: Txt.body.copyWith(fontWeight: FontWeight.w700)),
-              if (summary['unit_price'] != null) ...[
-                const SizedBox(height: 6),
-                Text('${qtyText(summary, 'billed_qty')} × ${won(summary['unit_price'])}', style: Txt.label),
-              ],
-            ]),
-          ),
-          Text(won(summary['billed_amount']), style: Txt.amount),
-        ]),
+        child: LayoutBuilder(
+          builder: (context, box) => Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(keepWords(corrected ? '합의 뒤 받은 수정 청구서' : '받은 청구서'),
+                    style: Txt.body.copyWith(fontWeight: FontWeight.w700)),
+                if (summary['unit_price'] != null) ...[
+                  const SizedBox(height: 6),
+                  Text('${qtyText(summary, 'billed_qty')} × ${won(summary['unit_price'])}', style: Txt.label),
+                ],
+              ]),
+            ),
+            const SizedBox(width: 12),
+            // Large amounts shrink instead of squeezing the label column.
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: box.maxWidth * 0.6),
+              child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(won(summary['billed_amount']), style: Txt.amount)),
+            ),
+          ]),
+        ),
       ),
       const SizedBox(height: 12),
       ...gap([
         if (replaced != null)
           InfoRow('처음 받은 청구액', won(replaced['billed_amount']),
+              stacked: true,
               caption: '${replaced['doc_no'] ?? '—'} · 이력'),
         if (corrected)
           InfoRow('수정 청구액', won(current!['billed_amount']),
-              caption: '${current['doc_no'] ?? '—'} (대체: ${current['replaces_doc_no']})'),
+              stacked: true,
+              caption: '${current['doc_no'] ?? '—'}\n대체: ${current['replaces_doc_no']}'),
         if (current?['agreement_text'] != null) _Quote(current!['agreement_text']),
         if (current?['agreement_ref'] != null) _AgreementButton(current!),
-        InfoRow('청구 / 실수령', '${qtyText(summary, 'billed_qty')} / ${receivedText(summary)}'),
+        InfoRow('청구 / 실수령', '${qtyText(summary, 'billed_qty')} / ${receivedText(summary)}',
+            stacked: true),
       ], 10),
       const SectionTitle('송금 정보'),
       ...gap([
@@ -262,18 +280,18 @@ class _Blockers extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final blockers = data['blockers'] is List ? data['blockers'] as List : const [];
-    const ink = TextStyle(fontSize: 14, color: Palette.warnInk, height: 1.45);
+    const ink = TextStyle(fontFamily: appFont, fontSize: 14, color: Palette.warnInk, height: 1.45);
     return TintCard(
       color: Palette.warnBg,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('아직 승인할 수 없습니다', style: ink.copyWith(fontWeight: FontWeight.w700)),
+        Text(keepWords('아직 승인할 수 없습니다'), style: ink.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         if (blockers.isEmpty) Text('· ${blockerText(null)}', style: ink),
         for (final code in blockers) Text('· ${blockerText(code)}', style: ink),
         const SizedBox(height: 12),
         OutlinedButton(
             onPressed: () => context.go(periodRoute(periodId)),
-            child: const Text('정산 홈에서 확인하기')),
+            child: Text(keepWords('정산 홈에서 확인하기'))),
       ]),
     );
   }
@@ -376,17 +394,25 @@ class ApprovalDetailScreen extends ConsumerWidget {
       const StatusChip(Status('승인 완료', Tone.ok)),
       const SizedBox(height: 14),
       TintCard(
-        child: Row(children: [
-          Expanded(child: Text('승인액', style: Txt.body.copyWith(fontWeight: FontWeight.w700))),
-          Text(won(info['approved_amount']), style: Txt.amount),
-        ]),
+        child: LayoutBuilder(
+          builder: (context, box) => Row(children: [
+            Expanded(child: Text('승인액', style: Txt.body.copyWith(fontWeight: FontWeight.w700))),
+            const SizedBox(width: 12),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: box.maxWidth * 0.6),
+              child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(won(info['approved_amount']), style: Txt.amount)),
+            ),
+          ]),
+        ),
       ),
       const SizedBox(height: 12),
       ...gap([
-        InfoRow('승인 ID', (info['approval_id'] ?? approvalId).toString()),
+        InfoRow('승인 ID', (info['approval_id'] ?? approvalId).toString(), stacked: true),
         InfoRow('버전', '${info['version_no'] ?? '—'}'),
         InfoRow('자료 버전', '${info['input_revision'] ?? '—'}'),
-        InfoRow('확인 범위', _scopeText(info['confirmation_scope'])),
+        InfoRow('확인 범위', _scopeText(info['confirmation_scope']), stacked: true),
         InfoRow('승인한 사람', (info['approved_by'] ?? '—').toString()),
         InfoRow('승인 시각', _timeText(info['approved_at'])),
       ], 10),
@@ -396,15 +422,17 @@ class ApprovalDetailScreen extends ConsumerWidget {
             caption: '승인과 송금 확인은 별개입니다.'),
         if (due != null) InfoRow('지급일', due),
       ], 10),
-      const SectionTitle('승인 당시 청구와 수령'),
+      SectionTitle(keepWords('승인 당시 청구와 수령')),
       ...gap([
-        InfoRow('청구 / 실수령', '${qtyText(summary, 'billed_qty')} / ${receivedText(summary)}'),
+        InfoRow('청구 / 실수령', '${qtyText(summary, 'billed_qty')} / ${receivedText(summary)}',
+            stacked: true),
         InfoRow('청구액', won(summary['billed_amount'])),
         for (final entry in history) ...[
           InfoRow(
             '${docTypeText(entry['replaces_doc_no'] == null ? 'INVOICE' : 'CORRECTED_INVOICE')} '
             '${entry['doc_no'] ?? ''}',
             won(entry['billed_amount']),
+            stacked: true,
             caption: [
               _historyStatusText(entry['status']),
               if (entry['replaces_doc_no'] != null) '대체: ${entry['replaces_doc_no']}',
@@ -415,7 +443,7 @@ class ApprovalDetailScreen extends ConsumerWidget {
         ],
       ], 10),
       if (items.isNotEmpty) ...[
-        const SectionTitle('승인 당시 원본', caption: '승인할 때 저장된 원본을 그대로 엽니다.'),
+        SectionTitle(keepWords('승인 당시 원본'), caption: '승인할 때 저장된 원본을 그대로 엽니다.'),
         ...gap([for (final item in items) _SnapshotItem(item)], 12),
       ],
     ]);

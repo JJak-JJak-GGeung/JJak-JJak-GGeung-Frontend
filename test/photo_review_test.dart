@@ -64,9 +64,12 @@ void main() {
           ),
         ),
       );
-      expect(find.text('원본 보기'), findsOneWidget);
+      // Narrow phones show the original button as an icon with a tooltip.
+      final original =
+          wide ? find.text('원본 보기') : find.byTooltip('원본 보기');
+      expect(original, findsOneWidget);
       expect(find.byType(Image), wide ? findsOneWidget : findsNothing);
-      await tester.tap(find.text('원본 보기'));
+      await tester.tap(original);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('원본 사진'), findsOneWidget);
@@ -95,7 +98,7 @@ void main() {
       await tester.scrollUntilVisible(qty, 180,
           scrollable: find.byType(Scrollable).first);
       await tester.enterText(qty, '5');
-      await tester.tap(find.text('원본 보기'));
+      await tester.tap(original);
       await tester.pumpAndSettle();
       expect(find.text('원본 사진'), findsOneWidget);
       await tester.tap(find.byType(CloseButton));

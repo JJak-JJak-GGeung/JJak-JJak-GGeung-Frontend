@@ -231,14 +231,20 @@ class _CallRecordingReviewState extends ConsumerState<CallRecordingReview> {
           key: ValueKey([label, value, options.keys.join(',')].join('|')),
           initialValue: value,
           isExpanded: true,
+          // Menu rows may wrap to two lines so similar items stay
+          // distinguishable; the closed field stays on one line.
+          itemHeight: null,
           decoration: InputDecoration(labelText: label),
           items: options.entries
               .map(
                 (e) => DropdownMenuItem(
                   value: e.key,
-                  child: Text(e.value, overflow: TextOverflow.ellipsis),
+                  child: Text(e.value, maxLines: 2, overflow: TextOverflow.ellipsis),
                 ),
               )
+              .toList(),
+          selectedItemBuilder: (_) => options.values
+              .map((v) => Text(v, maxLines: 1, overflow: TextOverflow.ellipsis))
               .toList(),
           onChanged: saving || loadingChoices
               ? null
@@ -250,9 +256,13 @@ class _CallRecordingReviewState extends ConsumerState<CallRecordingReview> {
 
   @override
   Widget build(BuildContext context) {
-    final errorStyle = TextStyle(color: Theme.of(context).colorScheme.error);
+    final errorStyle = TextStyle(fontFamily: appFont, color: Theme.of(context).colorScheme.error);
     return Scaffold(
-      appBar: AppBar(title: const Text('통화녹음으로 메모 남기기'), actions: [
+      appBar: AppBar(
+          title: const Text('통화녹음으로 메모 남기기'),
+          // Slightly smaller than the theme's 21px so it fits a 320px phone.
+          titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle?.copyWith(fontSize: 18),
+          actions: [
         StartButton(enabled: !saving, draft: memo.text.isNotEmpty || !reading, returnRoute: true),
       ]),
       body: SafeArea(
@@ -305,7 +315,7 @@ class _CallRecordingReviewState extends ConsumerState<CallRecordingReview> {
                     maxLines: 10,
                     decoration: const InputDecoration(labelText: '통화 메모'),
                   ),
-                  const SectionTitle('어느 거래의 통화인가요?'),
+                  SectionTitle(keepWords('어느 거래의 통화인가요?')),
                   // A new browser has no stores until a photo registers one.
                   if (stores.isEmpty && !loadingChoices && error == null)
                     const Padding(
@@ -318,7 +328,7 @@ class _CallRecordingReviewState extends ConsumerState<CallRecordingReview> {
                   if (stores.isEmpty && !loadingChoices)
                     TextButton(
                       onPressed: _loadStores,
-                      child: const Text('점포 목록 다시 불러오기'),
+                      child: Text(keepWords('점포 목록 다시 불러오기')),
                     ),
                   _choice(
                       '점포',
