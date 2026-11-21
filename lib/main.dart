@@ -148,64 +148,61 @@ class Home extends ConsumerStatefulWidget {
 }
 
 class _Home extends ConsumerState<Home> {
-  final email = TextEditingController();
-  final password = TextEditingController();
+  String? storeId;
+  String? supplierId;
+  late Future<List<Json>> stores;
+  Future<List<Json>>? suppliers;
+  Future<List<Json>>? availablePeriods;
+
   @override
-  void dispose() {
-    email.dispose();
-    password.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    stores = api.get('/api/stores').then((v) => records(v, 'stores'));
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (!demo && auth?.auth.currentSession == null) {
-      return Page(
-          '점주 로그인',
-          Column(children: [
-            if (auth == null) const Text('Supabase 공개 설정이 필요합니다.'),
-            TextField(
-                controller: email,
-                decoration: const InputDecoration(labelText: '이메일')),
-            TextField(
-                controller: password,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: '비밀번호')),
-            FilledButton(
-                onPressed: auth == null
-                    ? null
-                    : () async {
-                        try {
-                          await auth!.auth.signInWithPassword(
-                              email: email.text.trim(),
-                              password: password.text);
-                          if (!mounted) return;
-                          ref.invalidate(periods);
-                          setState(() => password.clear());
-                        } catch (e) {
-                          if (mounted) notify(context, e);
-                        }
-                      },
-                child: const Text('로그인')),
-          ]));
-    }
-    return Page(
-        '주간 정산',
-        loaded(
-            ref.watch(periods),
-            (rows) => Column(children: [
-                  if (rows.isEmpty) const Text('조회할 정산 기간이 없습니다.'),
-                  for (final row in rows)
-                    ListTile(
-                        title: Text((row['label'] ??
-                                row['period_start'] ??
-                                row['period_id'])
-                            .toString()),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => context.go(
-                            route((row['period_id'] ?? row['id']).toString()))),
-                ])));
-  }
+  Widget build(BuildContext context) => Page(
+    '주간 정산',
+    Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      pending(stores, (rows) => DropdownButtonFormField<String>(
+        initialValue: storeId,
+        decoration: const InputDecoration(labelText: '점포'),
+        items: rows.map((r) => DropdownMenuItem<String>(
+          value: r['id'].toString(), child: Text(r['name'].toString()))).toList(),
+        onChanged: (id) => setState(() {
+          storeId = id;
+          supplierId = null;
+          availablePeriods = null;
+          suppliers = api.get('/api/suppliers?store_id=' + part(id))
+            .then((v) => records(v, 'suppliers'));
+        }),
+      )),
+      const SizedBox(height: 16),
+      if (suppliers != null) pending(suppliers!, (rows) => DropdownButtonFormField<String>(
+        key: ValueKey(storeId),
+        initialValue: supplierId,
+        decoration: const InputDecoration(labelText: '거래처'),
+        items: rows.map((r) => DropdownMenuItem<String>(
+          value: r['id'].toString(), child: Text(r['name'].toString()))).toList(),
+        onChanged: (id) => setState(() {
+          supplierId = id;
+          availablePeriods = api.get('/api/periods?store_id=' + part(storeId)
+            + '&supplier_id=' + part(id)).then((v) => records(v, 'periods'));
+        }),
+      )),
+      const SizedBox(height: 16),
+      if (availablePeriods != null) pending(availablePeriods!, (rows) => Column(
+        children: [
+          if (rows.isEmpty) const Text('조회할 정산 기간이 없습니다.'),
+          for (final row in rows) ListTile(
+            title: Text(row['label'].toString()),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go(route(row['period_id'].toString())),
+          ),
+        ],
+      )),
+    ]),
+  );
 }
 
 class SettlementPage extends ConsumerStatefulWidget {
