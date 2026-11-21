@@ -306,7 +306,7 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
         const SizedBox(height: 10),
         OutlinedButton.icon(
           onPressed: locked || _recording || !receiptsKnown ? null : () => _editReceipt(tx, revision),
-          icon: const Icon(Icons.edit_note, size: 20),
+          icon: const Icon(Icons.edit_note),
           label: Text(
               receipts.isEmpty
                   ? keepWords('수령 근거 직접 입력')
@@ -484,7 +484,7 @@ class _MemoCard extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(Icons.record_voice_over_outlined, size: 18, color: Palette.primary),
+          const Icon(Icons.record_voice_over_outlined, size: inlineIconSize, color: Palette.primary),
           const SizedBox(width: 6),
           const Expanded(
               child: Text('점주가 남긴 통화 메모',

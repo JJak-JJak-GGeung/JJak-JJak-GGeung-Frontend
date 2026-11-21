@@ -25,6 +25,9 @@ void main() {
     for (final code in codes) {
       expect(find.textContaining(code), findsNothing);
     }
+    // Let the home screen's pending timers finish before the test ends.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(minutes: 5));
   });
 
   test('청구액만 누락되면 그 항목을 안내한다', () {

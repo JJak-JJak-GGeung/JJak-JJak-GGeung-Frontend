@@ -88,9 +88,16 @@ abstract final class Palette {
 /// Bundled Korean font (pubspec `fonts`). Component themes that set their own
 /// TextStyle must name it too, or they fall back to browser-fetched fonts.
 const appFont = 'NanumGothic';
+const double inlineIconSize = 20;
+const double navigationIconSize = 24;
 
 ThemeData appTheme() => ThemeData(
       useMaterial3: true,
+      iconTheme: const IconThemeData(size: navigationIconSize),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(iconSize: inlineIconSize),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(iconSize: navigationIconSize),
       colorScheme: ColorScheme.fromSeed(
           seedColor: Palette.primary,
           primary: Palette.primary,
@@ -123,12 +130,14 @@ ThemeData appTheme() => ThemeData(
       ),
       filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
+        iconSize: inlineIconSize,
         minimumSize: const Size.fromHeight(56),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: const TextStyle(fontFamily: appFont, fontSize: 17, fontWeight: FontWeight.w700),
       )),
       outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
+        iconSize: inlineIconSize,
         minimumSize: const Size.fromHeight(52),
         foregroundColor: Palette.ink,
         side: const BorderSide(color: Palette.line),
@@ -164,12 +173,22 @@ String keepWords(String text) => text.replaceAllMapped(_hangulPair, (m) => '${m[
 
 // --------------------------------------------------------------- formatting
 
+final _quantityWithUnit = RegExp(
+  r'^[+-]?(?:[0-9][0-9,]*(?:\.[0-9]+)?|\.[0-9]+)\s*(?:kg|g|mg|t|l|ml|㎏|㎖|개|박스|상자|봉|포|팩|병|통|마리|근|톤|장|세트|묶음)?$',
+  caseSensitive: false,
+);
+
+bool unitContainsQuantity(String? unit) =>
+    unit != null && _quantityWithUnit.hasMatch(unit.trim());
+
 /// "36kg" or "실입고 미확인" for a null received quantity. A confirmed zero
 /// stays "0kg" (R01).
 String qtyText(Json row, String field, {String missing = '미확인'}) {
   final value = row[field];
   if (value == null) return missing;
-  return '$value${row['unit'] ?? ''}';
+  final unit = row['unit']?.toString() ?? '';
+  if (unitContainsQuantity(unit)) return '$value (단위 확인 · $unit)';
+  return '$value$unit';
 }
 
 String receivedText(Json row) =>
@@ -421,10 +440,10 @@ class DemoBanner extends ConsumerWidget {
       decoration: BoxDecoration(
           color: Palette.infoBg, borderRadius: BorderRadius.circular(10)),
       child: Row(children: [
-        const Icon(Icons.science_outlined, size: 18, color: Palette.infoInk),
+        const Icon(Icons.science_outlined, size: inlineIconSize, color: Palette.infoInk),
         const SizedBox(width: 8),
         Expanded(
-            child: Text(keepWords('공개 A 예시 응답 · 서버 미연결'),
+            child: Text(keepWords('예시 자료를 보고 있습니다'),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -558,7 +577,7 @@ class InfoRow extends StatelessWidget {
                     if (onTap != null) ...[
                       const SizedBox(width: 4),
                       const Icon(Icons.chevron_right,
-                          size: 20, color: Palette.muted),
+                          size: inlineIconSize, color: Palette.muted),
                     ],
                   ])
                 : Row(children: [
@@ -584,7 +603,7 @@ class InfoRow extends StatelessWidget {
                       if (onTap != null) ...[
                         const SizedBox(width: 4),
                         const Icon(Icons.chevron_right,
-                            size: 20, color: Palette.muted),
+                            size: inlineIconSize, color: Palette.muted),
                       ],
                     ]),
             ),
@@ -633,7 +652,7 @@ Widget loaded<T>(AsyncValue<T> value, Widget Function(T) render,
       error: (e, _) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: Column(children: [
-          Text(e.toString(), style: Txt.body, textAlign: TextAlign.center),
+          Text(userErrorText(e), style: Txt.body, textAlign: TextAlign.center),
           if (retry != null) ...[
             const SizedBox(height: 12),
             OutlinedButton(onPressed: retry, child: const Text('다시 불러오기')),
@@ -649,7 +668,7 @@ void notify(BuildContext context, Object message) {
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message.toString())));
+    ..showSnackBar(SnackBar(content: Text(message is String ? message : userErrorText(message))));
 }
 
 /// Simple yes/no confirmation; returns true only on the confirm button.
