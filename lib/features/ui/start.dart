@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'call_recording.dart';
-import 'photo_review.dart';
 import 'directory.dart';
+import 'period_history.dart';
+import 'photo_review.dart';
 import 'shared.dart';
 
 /// Entry screen `/`: the owner picks 점포 → 거래처 → 정산 기간 (no login).
@@ -206,25 +207,14 @@ class _StartScreenState extends ConsumerState<StartScreen> {
       if (directoryReady)
         TextButton(onPressed: () => openSampleDelivery(context, backend), child: const Text('합성 명세표로 연습')),
       if (periods != null) ...[
-        const SectionTitle('정산 기간', caption: '열어 볼 주를 고르세요.'),
+        const SectionTitle('정산 기간', caption: '연도나 달력에서 찾고, 정산할 주를 여세요.'),
         _Pending(
           future: periods!,
           retry: () => _pickSupplier(supplier!),
-          render: (rows) => rows.isEmpty
-              ? const Text('조회할 정산 기간이 없습니다.', style: Txt.body)
-              : Column(
-                  children: gap([
-                    for (final row in rows)
-                      InfoRow(
-                        periodText(row),
-                        '열기',
-                        caption: row['label']?.toString(),
-                        onTap: () => context.go(
-                          periodRoute(row['period_id'].toString()),
-                        ),
-                      ),
-                  ], 10),
-                ),
+          render: (rows) => PeriodHistory(
+            key: ValueKey((store?['id'], supplier?['id'])),
+            rows: rows,
+          ),
         ),
       ],
     ],
