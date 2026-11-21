@@ -149,6 +149,7 @@ void main() {
     });
     api.pending.complete({
       'signature': 'sig',
+      'line_reference_edits': true,
       'draft': {
         'supplier_name_read': '샘플',
         'doc_type': 'DELIVERY',
@@ -162,6 +163,7 @@ void main() {
             'qty_read': '4',
             'unit': 'kg',
             'spec': '1kg',
+            'delivery_no': 'old',
             'item_code': '0012',
             'discount_amount_read': 0,
             'line_total_read': 9900,
@@ -194,6 +196,11 @@ void main() {
       await tester.ensureVisible(input);
       await tester.enterText(input, entry.value);
     }
+    for (final edit in {'연결할 납품명세 번호': '', '납품·수령일 (YYYY-MM-DD)': '2026-01-02'}.entries) {
+      final input = find.widgetWithText(TextFormField, edit.key);
+      await tester.scrollUntilVisible(input, 180, scrollable: find.byType(Scrollable).first);
+      await tester.enterText(input, edit.value);
+    }
     final qty = find.widgetWithText(TextFormField, '수량');
     await tester.scrollUntilVisible(qty, 180,
         scrollable: find.byType(Scrollable).first);
@@ -224,6 +231,8 @@ void main() {
     final confirmed = jsonDecode(api.confirmed['review_json']!);
     expect(confirmed['lines'][0]['qty_read'], '3');
     expect(confirmed['statement_amounts'], {'deposit_amount': null, 'tax_total': 0});
+    expect(confirmed['lines'][0], containsPair('delivery_no', null));
+    expect(confirmed['lines'][0]['delivery_date'], '2026-01-02');
     expect(confirmed['lines'][0]['spec'], '2kg');
     expect(confirmed['lines'][0]['item_code'], '0012');
     expect(confirmed['lines'][0]['discount_amount_read'], 0);
