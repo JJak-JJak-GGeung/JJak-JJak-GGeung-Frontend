@@ -36,7 +36,7 @@ class SettlementApp extends StatelessWidget {
                     s.pathParameters['p']!, s.pathParameters['t']!)),
             GoRoute(
                 path: 'upload',
-                builder: (_, s) => UploadScreen(s.pathParameters['p']!)),
+                builder: (_, s) => UploadScreen(s.pathParameters['p']!, initialDocument: s.uri.queryParameters['document'])),
             GoRoute(
                 path: 'approve',
                 builder: (_, s) => ApproveScreen(s.pathParameters['p']!)),

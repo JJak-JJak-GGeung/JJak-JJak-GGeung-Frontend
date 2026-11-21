@@ -35,6 +35,9 @@ class ApiError implements Exception {
         401 => '다시 로그인해 주세요.',
         403 => '이 자료를 열 권한이 없습니다.',
         404 => '자료를 찾지 못했습니다.',
+        409 when detail == 'PHOTO_ALREADY_REGISTERED' => '같은 원본이 이미 등록되어 있습니다. 기존 문서에서 확인해 주세요.',
+        503 when detail == 'PHOTO_READING_FAILED' => '사진 판독을 마치지 못했습니다. 원본을 확인하거나 다시 시도해 주세요.',
+        422 when detail == 'NO_REVIEWABLE_LINES' => '판독한 품목이 없습니다. 원본의 품목 행을 확인해 주세요.',
         409 when detail == 'KEY_REUSE' =>
           '같은 요청 번호로 다른 내용이 전송되었습니다. 화면을 새로 열어 다시 시도하세요.',
         409 => '자료가 변경되었습니다. 최신 근거를 확인한 뒤 다시 시도하세요.',

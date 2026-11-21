@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'photo_review.dart';
 import 'shared.dart';
 
 /// Entry screen `/`: the owner picks 점포 → 거래처 → 정산 기간 (no login).
@@ -51,10 +52,12 @@ class _StartScreenState extends ConsumerState<StartScreen> {
     });
   }
 
-  /// Camera button: pick (or confirm) store, supplier and period in a
-  /// sheet, then open that period's upload screen. Uploads always belong to
-  /// one period (POST /api/periods/P/documents).
+  /// Connected builds open the photo first. The offline demo uses sample periods.
   Future<void> _openUpload() async {
+    if (!demo) {
+      await startPhotoReview(context);
+      return;
+    }
     final target = await showModalBottomSheet<Json>(
       context: context,
       showDragHandle: true,
