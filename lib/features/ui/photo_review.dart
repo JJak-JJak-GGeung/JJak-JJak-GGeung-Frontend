@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +23,35 @@ const statementAmountLabels = {
 
 const _newChoice = '__new__';
 const photoTypes = ['DELIVERY', 'RECEIPT', 'INVOICE', 'CORRECTED_INVOICE'];
+
+String _normalizeTradeDate(String input) {
+  final text = input.trim();
+  if (RegExp(r'^[0-9]{8}$').hasMatch(text)) {
+    return '${text.substring(0, 4)}-${text.substring(4, 6)}-${text.substring(6)}';
+  }
+  if (RegExp(r'^[0-9]{4}\.[0-9]{2}\.[0-9]{2}$').hasMatch(text)) {
+    return text.replaceAll('.', '-');
+  }
+  return text;
+}
+
+final _tradeDateFormatter = TextInputFormatter.withFunction((oldValue, value) {
+  if (!value.composing.isCollapsed) return value;
+  final text = _normalizeTradeDate(value.text);
+  if (text == value.text || text.length != 10) return value;
+  // Keep a selection inside a pasted or edited date on the same digit.
+  final compact = value.text.trim().length == 8;
+  final leading = value.text.length - value.text.trimLeft().length;
+  int offset(int pos) {
+    if (pos < 0) return pos;
+    final n = (pos - leading).clamp(0, value.text.trim().length);
+    return n + (compact && n > 4 ? 1 : 0) + (compact && n > 6 ? 1 : 0);
+  }
+  return TextEditingValue(text: text, selection: value.selection.copyWith(
+    baseOffset: offset(value.selection.baseOffset),
+    extentOffset: offset(value.selection.extentOffset),
+  ));
+});
 
 /// The file stays available on this page even during a failed or retried reading.
 class PhotoReview extends ConsumerStatefulWidget {
@@ -48,6 +78,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   String shopName = '', vendorName = '';
   DateTime? week;
   String tradeDate = '';
+  bool showDateError = false;
   final amountInputs = <String, String>{};
   String? proposedDate(Json draft) =>
       draft['period_start'] ?? draft['trade_date'] ?? draft['doc_date'] ??
@@ -117,7 +148,8 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         for (final key in statementAmountLabels.keys.where(draft.containsKey)) {
           amountInputs[key] = draft[key]?.toString() ?? '';
         }
-        tradeDate = draft['trade_date']?.toString() ?? '';
+        tradeDate = _normalizeTradeDate(draft['trade_date']?.toString() ?? '');
+        showDateError = false;
         final date = DateTime.tryParse(proposedDate(draft) ?? '');
         if (date != null && date.year >= 1900 && date.year < 2200) week = monday(date);
         type = photoTypes.contains(kept('doc_type'))
@@ -129,7 +161,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       });
       await _loadStores();
     } catch (e) {
-      if (mounted) setState(() => error = e.toString());
+      if (mounted) setState(() => error = userErrorText(e));
     } finally {
       if (mounted) setState(() => reading = false);
     }
@@ -158,7 +190,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
           .toList();
       if (matches.length == 1) await _store(matches.single['id']);
     } catch (e) {
-      if (mounted) setState(() => error = e.toString());
+      if (mounted) setState(() => error = userErrorText(e));
     } finally {
       if (mounted) setState(() => loadingChoices = false);
     }
@@ -199,7 +231,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       if (matches.length == 1) await _supplier(matches.single['id']);
       if (matches.isEmpty) await _supplier(_newChoice);
     } catch (e) {
-      if (mounted && store == id) setState(() => error = e.toString());
+      if (mounted && store == id) setState(() => error = userErrorText(e));
     } finally {
       if (mounted && store == id) setState(() => loadingChoices = false);
     }
@@ -252,7 +284,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         }
       });
     } catch (e) {
-      if (mounted && supplier == id) setState(() => error = e.toString());
+      if (mounted && supplier == id) setState(() => error = userErrorText(e));
     } finally {
       if (mounted && supplier == id) setState(() => loadingChoices = false);
     }
@@ -277,10 +309,13 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   );
 
   Future<void> _save() async {
-    final entered = tradeDate.trim();
+    final entered = _normalizeTradeDate(tradeDate);
     final parsed = DateTime.tryParse(entered);
-    if (entered.isNotEmpty && (parsed == null || day(parsed) != entered)) {
-      setState(() => error = '거래일을 연도-월-일 형식으로 확인해 주세요.');
+    if (entered.isNotEmpty && (parsed == null || parsed.year < 1 || day(parsed) != entered)) {
+      setState(() {
+        showDateError = true;
+        error = '원본 거래일을 확인해 주세요.';
+      });
       return;
     }
     final overrides = <String, int?>{};
@@ -388,7 +423,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       refreshPeriod(ref, savedPeriod);
       Navigator.pop(context, '${uploadRoute(savedPeriod)}?document=${part(result['document_id'])}');
     } catch (e) {
-      if (mounted) setState(() => error = e.toString());
+      if (mounted) setState(() => error = userErrorText(e));
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -424,14 +459,23 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   );
 
   Widget _field(Json line, String key, String label) => Padding(
-    padding: const EdgeInsets.only(top: 14),
-    child: TextFormField(
-      initialValue: line[key]?.toString() ?? '',
-      enabled: !saving,
-      decoration: InputDecoration(labelText: label),
-      onChanged: (v) => line[key] = v,
-    ),
-  );
+        padding: const EdgeInsets.only(top: 14),
+        child: TextFormField(
+          initialValue: line[key]?.toString() ?? '',
+          enabled: !saving,
+          decoration: InputDecoration(
+            labelText: label,
+            errorText: key == 'unit' && unitContainsQuantity(line[key]?.toString())
+                ? '수량은 왼쪽에, 단위는 kg처럼 입력하세요.'
+                : null,
+            errorMaxLines: 3,
+          ),
+          onChanged: (v) {
+            line[key] = v;
+            if (key == 'unit') setState(() {});
+          },
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -471,17 +515,18 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
                   Text('견적일 · ${draft['quoted_on']}', style: Txt.label),
               ],
             ),
-          TextFormField(
-            initialValue: tradeDate,
-            enabled: !saving,
-            decoration: const InputDecoration(
-              labelText: '원본 거래일',
-              hintText: 'YYYY-MM-DD',
-              helperText: '거래일이 없으면 비워 두세요. 정산 기간은 별도로 선택합니다.',
-              helperMaxLines: 3,
-            ),
-            onChanged: (value) => tradeDate = value,
-          ),
+          TextFormField(initialValue: tradeDate, enabled: !saving,
+            keyboardType: TextInputType.number,
+            inputFormatters: [_tradeDateFormatter],
+            decoration: InputDecoration(labelText: '원본 거래일', hintText: '예: 20261116',
+              helperText: '숫자 8자리로 입력하세요. 거래일이 없으면 비워 두세요.',
+              helperMaxLines: 2,
+              errorText: showDateError ? '실제 날짜를 연월일 8자리로 입력해 주세요.' : null),
+            onChanged: (value) {
+              tradeDate = value;
+              if (showDateError) setState(() { showDateError = false; error = null; });
+            }),
+          const SizedBox(height: 16),
           if (amountInputs.isNotEmpty)
             ExpansionTile(
               title: Text(keepWords('원본 명세표 금액'), style: Txt.section),
@@ -614,16 +659,18 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
             ),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed: reading || saving || !ready || type == null || lines.isEmpty ? null : _save,
-            child: Text(
-              saving
-                  ? '저장 중'
-                  : store == _newChoice
-                  ? '새 점포 등록하고 원본 저장'
-                  : supplier == _newChoice
-                  ? '거래처 등록하고 원본 저장'
-                  : '판독값 확인하고 저장',
-            ),
+            onPressed:
+                reading || saving || !ready || type == null || lines.isEmpty ||
+                        lines.any((l) => unitContainsQuantity(l['unit']?.toString()))
+                    ? null
+                    : _save,
+            child: Text(saving
+                ? '저장 중'
+                : store == _newChoice
+                    ? '새 점포 등록하고 원본 저장'
+                    : supplier == _newChoice
+                    ? '거래처 등록하고 원본 저장'
+                    : '판독값 확인하고 저장'),
           ),
         ],
       ], 16),
