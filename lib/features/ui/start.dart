@@ -216,8 +216,6 @@ class _StartScreenState extends ConsumerState<StartScreen> {
       Text('안녕하세요 admin님', style: Txt.section.copyWith(color: Palette.primary)),
       const SizedBox(height: 6),
       const Text('사진으로 시작하거나 내 점포를 여세요', style: Txt.title),
-      const SizedBox(height: 8),
-      const Text('회원가입 없이 이용합니다. 같은 기기와 브라우저 프로필에서 이 주소를 다시 열면 저장한 자료를 볼 수 있어요.', style: Txt.label),
       const SizedBox(height: 24),
       _Pending(
         future: stores,
