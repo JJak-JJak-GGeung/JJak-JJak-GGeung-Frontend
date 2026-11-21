@@ -303,6 +303,15 @@ class _CallRecordingReviewState extends ConsumerState<CallRecordingReview> {
                     decoration: const InputDecoration(labelText: '통화 메모'),
                   ),
                   const SectionTitle('어느 거래의 통화인가요?'),
+                  // A new browser has no stores until a photo registers one.
+                  if (stores.isEmpty && !loadingChoices && error == null)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        '이 브라우저에 등록된 점포가 없습니다. 먼저 사진 올리기로 거래처 자료를 등록한 뒤 통화 메모를 남겨 주세요. 받아쓴 내용은 복사해 두세요.',
+                        style: Txt.label,
+                      ),
+                    ),
                   if (stores.isEmpty && !loadingChoices)
                     TextButton(
                       onPressed: _loadStores,
