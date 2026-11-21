@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jjakjjakggeung/api.dart';
 import 'package:jjakjjakggeung/features/ui/photo_review.dart';
-import 'package:jjakjjakggeung/features/ui/shared.dart';
+import 'package:jjakjjakggeung/features/ui/shared.dart' show qtyText, unitContainsQuantity;
 
 class TestBackend implements Backend {
   final pending = Completer<Json>();
