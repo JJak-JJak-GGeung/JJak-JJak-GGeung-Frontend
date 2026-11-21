@@ -734,17 +734,12 @@ class EvidenceButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final usable = refs.where((r) => r['document_id'] != null).toList();
-    final notes = refs.map((r) => r['evidence_text']).whereType<String>().toSet();
-    if (usable.isEmpty && notes.isEmpty) {
-      return const Text('연결된 원본이 아직 없습니다.', style: Txt.label);
-    }
+    if (usable.isEmpty) return const Text('연결된 원본이 아직 없습니다.', style: Txt.label);
     return LayoutBuilder(builder: (context, box) {
       final width = box.maxWidth >= 420 && usable.length > 1
           ? (box.maxWidth - 10) / 2
           : box.maxWidth;
       return Wrap(spacing: 10, runSpacing: 10, children: [
-        for (final note in notes)
-          SizedBox(width: box.maxWidth, child: Text('점주 수령 근거 · $note')),
         for (final r in usable)
           SizedBox(
             width: width,
