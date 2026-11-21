@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jjakjjakggeung/api.dart';
 import 'package:jjakjjakggeung/features/ui/photo_review.dart';
+import 'package:jjakjjakggeung/features/ui/shared.dart' show qtyText, unitContainsQuantity;
 
 class TestBackend implements Backend {
   final pending = Completer<Json>();
@@ -204,7 +205,7 @@ void main() {
     final qty = find.widgetWithText(TextFormField, '수량');
     await tester.scrollUntilVisible(qty, 180,
         scrollable: find.byType(Scrollable).first);
-    await tester.enterText(qty, '3');
+    await tester.enterText(qty, '40');
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
     final details = find.text('품목 상세 정보');
@@ -221,15 +222,28 @@ void main() {
     await tester.enterText(spec, '2kg');
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
+    final unit = find.widgetWithText(TextFormField, '단위');
+    await tester.enterText(unit, '36kg');
+    await tester.pump();
+    expect(find.text('수량은 왼쪽에, 단위는 kg처럼 입력하세요.'), findsOneWidget);
     final save = find.text('판독값 확인하고 저장');
     await tester.scrollUntilVisible(save, 180,
         scrollable: find.byType(Scrollable).first);
-    await tester.ensureVisible(save);
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, '판독값 확인하고 저장')).onPressed, isNull);
+    expect(api.confirmed, isEmpty);
+    await tester.scrollUntilVisible(unit, -180,
+        scrollable: find.byType(Scrollable).first);
+    await tester.enterText(unit, 'kg');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(save, 180,
+        scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     await tester.tap(save);
     await tester.pumpAndSettle();
     final confirmed = jsonDecode(api.confirmed['review_json']!);
-    expect(confirmed['lines'][0]['qty_read'], '3');
+    expect(confirmed['lines'][0]['qty_read'], '40');
+    expect(confirmed['lines'][0]['unit'], 'kg');
     expect(confirmed['statement_amounts'], {'deposit_amount': null, 'tax_total': 0});
     expect(confirmed['lines'][0], containsPair('delivery_no', null));
     expect(confirmed['lines'][0]['delivery_date'], '2026-01-02');
@@ -241,6 +255,16 @@ void main() {
     expect(destination, '/period/period/upload?document=document-1');
     expect(api.uploads, ['/api/photo-previews', '/api/photo-previews/confirm']);
   });
+  test('수량과 단위는 기존 입력 오류가 있어도 구분되어 보인다', () {
+    String display(String unit) => qtyText({'qty_read': '40', 'unit': unit}, 'qty_read');
+    expect(display('36kg'), '40 (단위 확인 · 36kg)');
+    expect(display('kg'), '40kg');
+    expect(unitContainsQuantity('36 kg'), isTrue);
+    expect(unitContainsQuantity('36'), isTrue);
+    expect(unitContainsQuantity('m2'), isFalse);
+    expect(unitContainsQuantity('10개입'), isFalse);
+  });
+
   testWidgets('판독 다시 시도는 실패한 문서의 종류·점포·거래처·기간을 그대로 쓴다', (tester) async {
     final api = TestBackend();
     api.choices.addAll({
