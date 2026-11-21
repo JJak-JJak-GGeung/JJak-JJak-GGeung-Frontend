@@ -104,9 +104,9 @@ class _StartScreenState extends ConsumerState<StartScreen> {
           ),
         ),
         children: [
-          const Text('주간 정산을 열 점포를 고르세요', style: Txt.title),
+          const Text('사진으로 시작하거나 내 점포를 여세요', style: Txt.title),
           const SizedBox(height: 8),
-          const Text('점포와 거래처를 고르면 그 주의 청구·납품·수령 기록을 함께 봅니다.', style: Txt.label),
+          const Text('회원가입 없이 이용합니다. 같은 기기와 브라우저 프로필에서 이 주소를 다시 열면 저장한 자료를 볼 수 있어요.', style: Txt.label),
           const SizedBox(height: 24),
           _Pending(
             future: stores,
@@ -115,7 +115,7 @@ class _StartScreenState extends ConsumerState<StartScreen> {
               label: '점포',
               rows: rows,
               selected: store,
-              empty: '등록된 점포가 없습니다.',
+              empty: '사진을 올리고 상호를 확인하면 첫 점포를 등록할 수 있어요.',
               onPick: _pickStore,
             ),
           ),
@@ -441,7 +441,7 @@ class _UploadTargetSheetState extends State<_UploadTargetSheet> {
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                     children: [
                       ..._section('점포', stores, store, (r) => r['name'].toString(), _pickStore,
-                          empty: '등록된 점포가 없습니다.'),
+                          empty: '사진을 올리고 상호를 확인하면 첫 점포를 등록할 수 있어요.'),
                       if (store != null)
                         ..._section(
                             '거래처', suppliers, supplier, (r) => r['name'].toString(), _pickSupplier,

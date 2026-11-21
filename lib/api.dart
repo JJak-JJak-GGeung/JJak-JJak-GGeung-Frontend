@@ -32,7 +32,7 @@ class ApiError implements Exception {
 
   @override
   String toString() => switch (status) {
-        401 => '다시 로그인해 주세요.',
+        401 => '이 브라우저의 저장 공간을 허용한 뒤 같은 주소를 다시 열어 주세요.',
         403 => '이 자료를 열 권한이 없습니다.',
         404 => '자료를 찾지 못했습니다.',
         409 when detail == 'PHOTO_ALREADY_REGISTERED' => '같은 원본이 이미 등록되어 있습니다. 기존 문서에서 확인해 주세요.',
