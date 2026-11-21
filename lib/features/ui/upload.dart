@@ -433,6 +433,9 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         ].join(' · '), style: Txt.label),
         const SizedBox(height: 12),
         Text('거래일 · ${doc['trade_date'] ?? '미확인'}', style: Txt.body),
+        for (final entry in statementAmountLabels.entries)
+          if (doc[entry.key] != null)
+            Text('${entry.value} · ${won(doc[entry.key])}', style: Txt.label),
         if (doc['doc_date'] != null) Text('문서일 · ${doc['doc_date']}', style: Txt.label),
         if (doc['issued_on'] != null) Text('작성·발행일 · ${doc['issued_on']}', style: Txt.label),
         if (doc['quoted_on'] != null) Text('견적일 · ${doc['quoted_on']}', style: Txt.label),
