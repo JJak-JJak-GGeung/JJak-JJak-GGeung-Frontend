@@ -1,12 +1,13 @@
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 import 'package:record/record.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'api.dart';
+import 'recording_io.dart' if (dart.library.js_interop) 'recording_web.dart';
 
 const base = String.fromEnvironment('API_BASE_URL');
 const demo = base == '';
@@ -572,10 +573,11 @@ class _TransactionPage extends ConsumerState<TransactionPage> {
         if (mounted) notify(context, '마이크 권한이 꺼져 있습니다. 직접 입력할 수 있습니다.');
         return;
       }
-      final opus = await recorder.isEncoderSupported(AudioEncoder.opus);
+      final opus =
+          kIsWeb && await recorder.isEncoderSupported(AudioEncoder.opus);
       await recorder.start(
           RecordConfig(encoder: opus ? AudioEncoder.opus : AudioEncoder.wav),
-          path: opus ? 'memo.webm' : 'memo.wav');
+          path: await recordingPath(opus ? 'memo.webm' : 'memo.wav'));
       if (mounted) setState(() => recording = true);
       return;
     }
@@ -583,18 +585,15 @@ class _TransactionPage extends ConsumerState<TransactionPage> {
     if (!mounted) return;
     setState(() => recording = false);
     if (url == null) return;
-    final audio = await http.get(Uri.parse(url));
-    if (audio.bodyBytes.isEmpty || audio.statusCode != 200)
-      throw StateError('녹음 파일 읽기 실패');
-    final mime =
-        audio.headers['content-type']?.split(';').first ?? 'audio/webm';
+    final (bytes: bytes, mime: mime) = await readRecording(url);
+    if (bytes.isEmpty) throw StateError('녹음 파일 읽기 실패');
     final extension = mime == 'audio/wav'
         ? 'wav'
         : mime == 'audio/ogg'
             ? 'ogg'
             : 'webm';
     final response = await api.upload(
-        '/api/transcriptions', audio.bodyBytes, 'memo.' + extension, mime);
+        '/api/transcriptions', bytes, 'memo.' + extension, mime);
     if (!mounted) return;
     setState(() {
       memo.text = (response['draft_text'] ?? '').toString();
