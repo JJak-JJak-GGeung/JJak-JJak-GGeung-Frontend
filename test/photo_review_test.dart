@@ -256,6 +256,57 @@ void main() {
     expect(confirmed['period_id'], 'kept-week');
     expect(confirmed.containsKey('supplier_name'), isFalse);
   });
+  testWidgets('다른 거래처 주에 보이던 실패 문서는 원래 거래처를 쓰고 주는 날짜로 고른다', (tester) async {
+    final api = TestBackend();
+    api.choices.addAll({
+      '/api/stores': {
+        'stores': [
+          {'id': 'kept-store', 'name': '기존 점포'}
+        ]
+      },
+      '/api/suppliers?store_id=kept-store': {
+        'suppliers': [
+          {'id': 'shown-supplier', 'name': '보던 거래처'},
+          {'id': 'own-supplier', 'name': '원래 거래처'},
+        ]
+      },
+      '/api/periods?store_id=kept-store&supplier_id=own-supplier': {
+        'periods': [
+          {'period_id': 'own-week', 'period_start': '2026-01-05', 'period_end': '2026-01-11', 'label': '원래 주'},
+        ]
+      },
+    });
+    api.pending.complete({
+      'signature': 'sig',
+      'draft': {
+        'store_name_read': null,
+        'supplier_name_read': '보던 거래처',
+        'doc_type': 'DELIVERY',
+        'doc_date': '2026-01-06',
+        'lines': [
+          {'item': '채소', 'qty_read': '4', 'unit': 'kg'}
+        ]
+      }
+    });
+    await tester.pumpWidget(ProviderScope(
+        child: MaterialApp(
+            home: PhotoReview(
+                PlatformFile(name: 'original.png', bytes: bytes, size: bytes.length),
+                api: api,
+                existing: const {
+                  'doc_type': 'DELIVERY',
+                  'store_id': 'kept-store',
+                  'supplier_id': 'own-supplier',
+                }))));
+    await tester.pumpAndSettle();
+    final save = find.text('판독값 확인하고 저장');
+    await tester.scrollUntilVisible(save, 180, scrollable: find.byType(Scrollable).first);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    final confirmed = jsonDecode(api.confirmed['review_json']!);
+    expect(confirmed['supplier_id'], 'own-supplier');
+    expect(confirmed['period_id'], 'own-week');
+  });
   for (final mode in ['empty', 'match', 'different']) {
     final firstStore = mode != 'match';
     testWidgets('사진 한 장으로 새 거래처와 원본 확인 저장 mode=$mode',

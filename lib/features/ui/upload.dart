@@ -111,12 +111,15 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
           final route = await Navigator.of(context).push<String>(MaterialPageRoute(
             builder: (_) => PhotoReview(
               PlatformFile(name: '$filename.$ext', bytes: bytes, size: bytes.length),
-              // Same document, store, supplier and week as the failed reading.
+              // Same document type, store, supplier and week as the failed reading.
+              // A document shown here as another supplier's candidate keeps its own
+              // supplier; the week is then chosen by date among that supplier's weeks.
               existing: {
                 'doc_type': doc['doc_type'],
                 'store_id': data['store_id'],
-                'supplier_id': data['supplier_id'],
-                'period_id': data['period_id'] ?? periodId,
+                'supplier_id': doc['selected_supplier_id'] ?? data['supplier_id'],
+                if ((doc['selected_supplier_id'] ?? data['supplier_id']) == data['supplier_id'])
+                  'period_id': data['period_id'] ?? periodId,
               },
             ),
           ));
