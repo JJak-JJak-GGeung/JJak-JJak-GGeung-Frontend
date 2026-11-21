@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api.dart';
 import 'demo_backend.dart';
+import 'original_photo.dart';
 
 export '../../api.dart';
 
@@ -639,7 +640,7 @@ Future<void> showOriginal(BuildContext context, Json ref) {
                     children: [
                       Text(docTypeText(ref['kind']), style: Txt.section),
                       const SizedBox(height: 4),
-                      Text('해당 줄 · ${locationText(loc)}', style: Txt.label),
+                      Text(loc.isEmpty ? '전체 원본' : '해당 줄 · ${locationText(loc)}', style: Txt.label),
                     ]),
               ),
               IconButton(
@@ -673,10 +674,7 @@ Future<void> showOriginal(BuildContext context, Json ref) {
                   return _DemoOriginal(
                       demoBackend!.documentText(id), loc['row']);
                 }
-                return InteractiveViewer(
-                  maxScale: 5,
-                  child: Image.memory(state.data!, fit: BoxFit.contain),
-                );
+                return OriginalPhoto(bytes: state.data!, location: loc);
               },
             ),
           ),
