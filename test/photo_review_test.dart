@@ -77,7 +77,7 @@ void main() {
         'signature': 'test',
         'draft': {
           'supplier_name_read': '샘플',
-          'doc_type': 'DELIVERY',
+          'doc_type': 'UNKNOWN',
           'lines': [
             {
               'item': '검수 품목',
