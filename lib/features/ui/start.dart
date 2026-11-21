@@ -51,10 +51,40 @@ class _StartScreenState extends ConsumerState<StartScreen> {
     });
   }
 
+  /// Camera button: pick (or confirm) store, supplier and period in a
+  /// sheet, then open that period's upload screen. Uploads always belong to
+  /// one period (POST /api/periods/P/documents).
+  Future<void> _openUpload() async {
+    final target = await showModalBottomSheet<Json>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: Palette.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      constraints: const BoxConstraints(maxWidth: 560),
+      builder: (_) => _UploadTargetSheet(store: store, supplier: supplier),
+    );
+    if (target == null || !mounted) return;
+    ref.read(pickedNames.notifier).state = {
+      'store': target['store']['name'].toString(),
+      'supplier': target['supplier']['name'].toString(),
+    };
+    context.go(uploadRoute(target['period']['period_id'].toString()));
+  }
+
   @override
   Widget build(BuildContext context) => Screen(
         title: '짝짜꿍',
         leading: false,
+        floatingActionButton: FloatingActionButton.large(
+          onPressed: _openUpload,
+          tooltip: '사진 올리기',
+          backgroundColor: Palette.primary,
+          foregroundColor: Colors.white,
+          shape: const CircleBorder(),
+          child: const Icon(Icons.photo_camera, size: 34),
+        ),
         children: [
           const Text('주간 정산을 열 점포를 고르세요', style: Txt.title),
           const SizedBox(height: 8),
@@ -141,46 +171,31 @@ class _Picker extends StatelessWidget {
       builder: (context) => SafeArea(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: Text('$label 선택', style: Txt.section),
-            ),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                itemCount: rows.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, i) {
-                  final row = rows[i];
-                  final on = row['id']?.toString() == selected?['id']?.toString();
-                  return Material(
-                    color: on ? Palette.tint : Palette.canvas,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(color: on ? Palette.primary : Palette.line),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () => Navigator.pop(context, row),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-                        child: Row(children: [
-                          Expanded(
-                            child: Text(row['name'].toString(),
-                                overflow: TextOverflow.ellipsis,
-                                style: Txt.value.copyWith(color: on ? Palette.primary : Palette.ink)),
-                          ),
-                          if (on) const Icon(Icons.check, color: Palette.primary, size: 20),
-                        ]),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ]),
+          child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Text('$label 선택', style: Txt.section),
+                ),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    itemCount: rows.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, i) {
+                      final row = rows[i];
+                      return _OptionTile(
+                        text: row['name'].toString(),
+                        selected: row['id']?.toString() == selected?['id']?.toString(),
+                        onTap: () => Navigator.pop(context, row),
+                      );
+                    },
+                  ),
+                ),
+              ]),
         ),
       ),
     );
@@ -226,6 +241,225 @@ class _Picker extends StatelessWidget {
       ),
     );
   }
+}
+
+/// One selectable card in a choice list (selected: blue border + check).
+class _OptionTile extends StatelessWidget {
+  const _OptionTile(
+      {required this.text, required this.selected, required this.onTap, this.caption});
+  final String text;
+  final String? caption;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: selected ? Palette.tint : Palette.canvas,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: selected ? Palette.primary : Palette.line),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(text,
+                      overflow: TextOverflow.ellipsis,
+                      style: Txt.value.copyWith(color: selected ? Palette.primary : Palette.ink)),
+                  if (caption != null) ...[
+                    const SizedBox(height: 2),
+                    Text(caption!, style: Txt.caption),
+                  ],
+                ]),
+              ),
+              if (selected) const Icon(Icons.check, color: Palette.primary, size: 20),
+            ]),
+          ),
+        ),
+      );
+}
+
+/// Sheet behind the camera button: 점포 → 거래처 → 정산 기간 in one place.
+/// Starts from what the start screen already selected and picks a level by
+/// itself when it has exactly one option. Pops `{store, supplier, period}`.
+class _UploadTargetSheet extends StatefulWidget {
+  const _UploadTargetSheet({this.store, this.supplier});
+  final Json? store;
+  final Json? supplier;
+
+  @override
+  State<_UploadTargetSheet> createState() => _UploadTargetSheetState();
+}
+
+class _UploadTargetSheetState extends State<_UploadTargetSheet> {
+  Json? store;
+  Json? supplier;
+  Json? period;
+  List<Json>? stores;
+  List<Json>? suppliers;
+  List<Json>? periods;
+  Object? error;
+  bool loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    store = widget.store;
+    supplier = widget.store == null ? null : widget.supplier;
+    _load();
+  }
+
+  /// Loads the next missing list; auto-selects single options.
+  /// Bumped on every load; a load whose number is no longer current drops
+  /// its results, so a slow answer for an earlier pick never lands under a
+  /// later one.
+  int _generation = 0;
+
+  Future<void> _load() async {
+    final generation = ++_generation;
+    bool current() => mounted && generation == _generation;
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      if (stores == null) {
+        final rows = records(await backend.get('/api/stores'), 'stores');
+        if (!current()) return;
+        stores = rows;
+        if (store == null && rows.length == 1) store = rows.first;
+      }
+      if (store != null && suppliers == null) {
+        final rows = records(
+            await backend.get('/api/suppliers?store_id=${part(store!['id'])}'), 'suppliers');
+        if (!current()) return;
+        suppliers = rows;
+        if (supplier == null && rows.length == 1) supplier = rows.first;
+      }
+      if (store != null && supplier != null && periods == null) {
+        final rows = records(
+            await backend.get(
+                '/api/periods?store_id=${part(store!['id'])}&supplier_id=${part(supplier!['id'])}'),
+            'periods');
+        if (!current()) return;
+        periods = rows;
+        if (period == null && rows.isNotEmpty) period = rows.first; // newest first
+      }
+    } catch (e) {
+      if (current()) error = e;
+    }
+    if (current()) setState(() => loading = false);
+  }
+
+  void _pickStore(Json row) {
+    if (store != null && _key(row) == _key(store!)) return;
+    setState(() {
+      store = row;
+      supplier = null;
+      period = null;
+      suppliers = null;
+      periods = null;
+    });
+    _load();
+  }
+
+  void _pickSupplier(Json row) {
+    if (supplier != null && _key(row) == _key(supplier!)) return;
+    setState(() {
+      supplier = row;
+      period = null;
+      periods = null;
+    });
+    _load();
+  }
+
+  static String _key(Json row) => (row['period_id'] ?? row['id']).toString();
+
+  List<Widget> _section(String title, List<Json>? rows, Json? selected, String Function(Json) text,
+          void Function(Json) onPick,
+          {String Function(Json)? caption, required String empty}) =>
+      [
+        Padding(
+          padding: const EdgeInsets.only(top: 16, bottom: 8),
+          child: Text(title, style: Txt.label),
+        ),
+        if (rows != null && rows.isEmpty)
+          Text(empty, style: Txt.body)
+        else if (rows != null)
+          ...gap([
+            for (final row in rows)
+              _OptionTile(
+                text: text(row),
+                caption: caption?.call(row),
+                selected: selected != null && _key(row) == _key(selected),
+                onTap: () => onPick(row),
+              ),
+          ], 8),
+      ];
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.8),
+          child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, 4),
+                  child: Text('사진 올리기', style: Txt.section),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Text('사진은 한 정산 기간에 묶어 저장합니다. 올릴 정산을 확인해 주세요.', style: Txt.label),
+                ),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    children: [
+                      ..._section('점포', stores, store, (r) => r['name'].toString(), _pickStore,
+                          empty: '등록된 점포가 없습니다.'),
+                      if (store != null)
+                        ..._section(
+                            '거래처', suppliers, supplier, (r) => r['name'].toString(), _pickSupplier,
+                            empty: '이 점포에 등록된 거래처가 없습니다.'),
+                      if (supplier != null)
+                        ..._section(
+                            '정산 기간', periods, period, periodText, (r) => setState(() => period = r),
+                            caption: (r) => r['label']?.toString() ?? '',
+                            empty: '조회할 정산 기간이 없습니다.'),
+                      if (loading)
+                        const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(child: CircularProgressIndicator())),
+                      if (error != null) ...[
+                        const SizedBox(height: 12),
+                        Text(error.toString(), style: Txt.body),
+                        const SizedBox(height: 8),
+                        OutlinedButton(onPressed: _load, child: const Text('다시 불러오기')),
+                      ],
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                  child: FilledButton.icon(
+                    onPressed: loading || store == null || supplier == null || period == null
+                        ? null
+                        : () => Navigator.pop(
+                            context, {'store': store, 'supplier': supplier, 'period': period}),
+                    icon: const Icon(Icons.photo_camera),
+                    label: const Text('이 정산에 사진 올리기'),
+                  ),
+                ),
+              ]),
+        ),
+      );
 }
 
 /// Loading / error wrapper for a one-off request.

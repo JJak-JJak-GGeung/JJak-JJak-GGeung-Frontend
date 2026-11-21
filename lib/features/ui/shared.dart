@@ -292,14 +292,19 @@ class Screen extends StatelessWidget {
       required this.title,
       required this.children,
       this.bottom = const [],
-      this.leading = true});
+      this.leading = true,
+      this.floatingActionButton});
   final String title;
   final List<Widget> children;
   final List<Widget> bottom;
   final bool leading;
 
+  /// Bottom-right action, e.g. the start screen's camera button.
+  final Widget? floatingActionButton;
+
   @override
   Widget build(BuildContext context) => Scaffold(
+        floatingActionButton: floatingActionButton,
         appBar: AppBar(
           title: Text(title),
           automaticallyImplyLeading: leading,
@@ -311,7 +316,9 @@ class Screen extends StatelessWidget {
               child: Column(children: [
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                    // Leave room so the floating button (96px + 16px margin) never covers the last row.
+                    padding: EdgeInsets.fromLTRB(
+                        20, 20, 20, floatingActionButton == null ? 28 : 128),
                     children: [if (demo) const DemoBanner(), ...children],
                   ),
                 ),
