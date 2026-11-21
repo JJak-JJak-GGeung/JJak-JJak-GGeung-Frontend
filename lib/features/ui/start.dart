@@ -215,7 +215,7 @@ class _StartScreenState extends ConsumerState<StartScreen> {
     children: [
       Text('안녕하세요 admin님', style: Txt.section.copyWith(color: Palette.primary)),
       const SizedBox(height: 6),
-      const Text('사진으로 시작하거나 내 점포를 여세요', style: Txt.title),
+      Text(keepWords('사진으로 시작하거나 내 점포를 여세요'), style: Txt.title),
       const SizedBox(height: 24),
       _Pending(
         future: stores,

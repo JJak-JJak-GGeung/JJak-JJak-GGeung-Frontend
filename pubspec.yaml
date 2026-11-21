@@ -22,3 +22,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/service_logo.png
+  fonts:
+    - family: NanumGothic
+      fonts:
+        - asset: assets/fonts/NanumGothic-Regular.ttf
+        - asset: assets/fonts/NanumGothic-Bold.ttf
+          weight: 700

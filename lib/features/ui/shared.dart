@@ -85,6 +85,10 @@ abstract final class Palette {
   static const errInk = Color(0xffa22b2b);
 }
 
+/// Bundled Korean font (pubspec `fonts`). Component themes that set their own
+/// TextStyle must name it too, or they fall back to browser-fetched fonts.
+const appFont = 'NanumGothic';
+
 ThemeData appTheme() => ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
@@ -92,12 +96,10 @@ ThemeData appTheme() => ThemeData(
           primary: Palette.primary,
           surface: Palette.surface),
       scaffoldBackgroundColor: Palette.canvas,
-      fontFamilyFallback: const [
-        'Pretendard',
-        'Noto Sans KR',
-        'Apple SD Gothic Neo',
-        'sans-serif'
-      ],
+      // Bundled NanumGothic (assets/fonts) so Korean never renders as tofu
+      // while the browser fetches fallback fonts. Bold covers w600–w900.
+      fontFamily: appFont,
+      fontFamilyFallback: const ['Noto Sans KR', 'Apple SD Gothic Neo', 'sans-serif'],
       appBarTheme: const AppBarTheme(
         backgroundColor: Palette.surface,
         foregroundColor: Palette.ink,
@@ -105,6 +107,7 @@ ThemeData appTheme() => ThemeData(
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
+            fontFamily: appFont,
             fontSize: 21, fontWeight: FontWeight.w700, color: Palette.ink),
         shape: Border(bottom: BorderSide(color: Palette.line)),
       ),
@@ -122,7 +125,7 @@ ThemeData appTheme() => ThemeData(
           style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(56),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        textStyle: const TextStyle(fontFamily: appFont, fontSize: 17, fontWeight: FontWeight.w700),
       )),
       outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
@@ -130,24 +133,34 @@ ThemeData appTheme() => ThemeData(
         foregroundColor: Palette.ink,
         side: const BorderSide(color: Palette.line),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        textStyle: const TextStyle(fontFamily: appFont, fontSize: 16, fontWeight: FontWeight.w700),
       )),
     );
 
 abstract final class Txt {
   static const title =
-      TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Palette.ink);
+      TextStyle(fontFamily: appFont, fontSize: 22, fontWeight: FontWeight.w700, color: Palette.ink);
   static const section =
-      TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Palette.ink);
-  static const body = TextStyle(fontSize: 14, color: Palette.ink, height: 1.45);
-  static const label = TextStyle(fontSize: 13, color: Palette.muted);
+      TextStyle(fontFamily: appFont, fontSize: 17, fontWeight: FontWeight.w700, color: Palette.ink);
+  static const body = TextStyle(fontFamily: appFont, fontSize: 14, color: Palette.ink, height: 1.45);
+  static const label = TextStyle(fontFamily: appFont, fontSize: 13, color: Palette.muted);
   static const caption =
-      TextStyle(fontSize: 12, color: Palette.muted, height: 1.4);
+      TextStyle(fontFamily: appFont, fontSize: 12, color: Palette.muted, height: 1.4);
   static const value =
-      TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Palette.ink);
+      TextStyle(fontFamily: appFont, fontSize: 15, fontWeight: FontWeight.w700, color: Palette.ink);
   static const amount =
-      TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Palette.ink);
+      TextStyle(fontFamily: appFont, fontSize: 19, fontWeight: FontWeight.w700, color: Palette.ink);
 }
+
+// ------------------------------------------------------------- line breaks
+
+final _hangulPair = RegExp(r'([가-힣ㄱ-ㅎㅏ-ㅣ])(?=[가-힣ㄱ-ㅎㅏ-ㅣ0-9A-Za-z.,!?·%)])');
+
+/// Keeps Korean words whole when text wraps. Flutter may break Hangul between
+/// any two syllables ("여/세요"); a WORD JOINER (U+2060) between the letters
+/// of a word leaves only spaces as break points, like CSS `word-break:
+/// keep-all`. Use it for titles, labels and button text.
+String keepWords(String text) => text.replaceAllMapped(_hangulPair, (m) => '${m[1]}\u2060');
 
 // --------------------------------------------------------------- formatting
 
