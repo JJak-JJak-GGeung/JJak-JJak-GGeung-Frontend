@@ -201,6 +201,13 @@ void main() {
     await tester.tap(find.text('사진 선택'));
     await tester.pumpAndSettle();
     expect(api.uploads, ['/api/photo-previews']);
+    final extra = find.text('다른 금액 입력');
+    await tester.scrollUntilVisible(extra, 180, scrollable: find.byType(Scrollable).first);
+    expect(find.widgetWithText(TextFormField, '공급가액 합계 (원)'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, '세액 합계 (원)'), findsNothing);
+    expect(find.widgetWithText(TextFormField, '현잔액 (원)'), findsNothing);
+    await tester.tap(extra);
+    await tester.pumpAndSettle();
     for (final entry in {'입금액 (원)': '', '세액 합계 (원)': '0'}.entries) {
       final input = find.widgetWithText(TextFormField, entry.key);
       await tester.ensureVisible(input);
@@ -219,6 +226,13 @@ void main() {
     await tester.ensureVisible(storeField);
     expect(tester.getTopLeft(storeField).dy - tester.getBottomLeft(amountFields.last).dy,
         greaterThanOrEqualTo(16));
+    final collapse = find.text('빈 금액 칸 접기');
+    await tester.ensureVisible(collapse);
+    await tester.pumpAndSettle();
+    await tester.tap(collapse);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextFormField, '현잔액 (원)'), findsNothing);
+    expect(find.widgetWithText(TextFormField, '세액 합계 (원)'), findsOneWidget);
     for (final edit in {'연결할 납품명세 번호': '', '납품·수령일 (YYYY-MM-DD)': '2026-01-02'}.entries) {
       final input = find.widgetWithText(TextFormField, edit.key);
       await tester.scrollUntilVisible(input, 180, scrollable: find.byType(Scrollable).first);
