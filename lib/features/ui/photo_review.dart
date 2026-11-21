@@ -54,6 +54,9 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   String? kept(String key) => widget.existing?[key]?.toString();
 
   String day(DateTime d) => d.toIso8601String().split('T').first;
+
+  /// Short "11/9" date for the week button label (fits a 320px phone).
+  String _md(DateTime d) => '${d.month}/${d.day}';
   DateTime monday(DateTime d) =>
       DateTime(d.year, d.month, d.day - (d.weekday - 1));
   bool get ready =>
@@ -407,9 +410,17 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
           key: ValueKey([label, value, options.keys.join(',')].join('|')),
           initialValue: value,
           isExpanded: true,
+          // Menu rows may wrap to two lines; the closed field stays on one.
+          itemHeight: null,
           decoration: InputDecoration(labelText: label),
           items: options.entries
-              .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+              .map((e) => DropdownMenuItem(
+                    value: e.key,
+                    child: Text(e.value, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ))
+              .toList(),
+          selectedItemBuilder: (_) => options.values
+              .map((v) => Text(v, maxLines: 1, overflow: TextOverflow.ellipsis))
               .toList(),
           onChanged: saving || loadingChoices
               ? null
@@ -432,6 +443,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 800;
+    final compact = MediaQuery.sizeOf(context).width < 400;
     final draft = object(preview?['draft']);
     final editor = ListView(
       padding: const EdgeInsets.all(16),
@@ -441,7 +453,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
         if (error != null)
           Text(
             error!,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+            style: TextStyle(fontFamily: appFont, color: Theme.of(context).colorScheme.error),
           ),
         if (!reading && preview == null)
           OutlinedButton(onPressed: _read, child: const Text('다시 판독')),
@@ -456,10 +468,10 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
           if (draft['issued_on'] != null) Text('작성·발행일 · ${draft['issued_on']}'),
           if (draft['quoted_on'] != null) Text('견적일 · ${draft['quoted_on']}'),
           TextFormField(initialValue: tradeDate, enabled: !saving,
-            decoration: const InputDecoration(labelText: '원본 거래일', hintText: 'YYYY-MM-DD', helperText: '거래일이 없으면 비워 두세요. 정산 기간은 별도로 선택합니다.'),
+            decoration: const InputDecoration(labelText: '원본 거래일', hintText: 'YYYY-MM-DD', helperText: '거래일이 없으면 비워 두세요. 정산 기간은 별도로 선택합니다.', helperMaxLines: 3),
             onChanged: (value) => tradeDate = value),
           if (amountInputs.isNotEmpty)
-            ExpansionTile(title: const Text('원본 명세표 금액'),
+            ExpansionTile(title: Text(keepWords('원본 명세표 금액')),
               initiallyExpanded: amountInputs.values.any((v) => v.isNotEmpty),
               children: [
                 for (final key in amountInputs.keys)
@@ -470,7 +482,7 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
           if (!storesLoaded && !loadingChoices)
             TextButton(
               onPressed: _loadStores,
-              child: const Text('점포 목록 다시 불러오기'),
+              child: Text(keepWords('점포 목록 다시 불러오기')),
             ),
           if (storesLoaded && store == null && !loadingChoices) ...[
             Text(shopName.trim().isEmpty
@@ -530,9 +542,9 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
           if (period == _newChoice)
             OutlinedButton(
                 onPressed: saving ? null : chooseWeek,
-                child: Text(week == null
+                child: Text(keepWords(week == null
                     ? '자료를 보관할 정산 주 선택'
-                    : '${day(week!)} ~ ${day(week!.add(const Duration(days: 6)))} · 주 변경')),
+                    : '${_md(week!)} ~ ${_md(week!.add(const Duration(days: 6)))} · 주 변경'))),
           if (loadingChoices) const LinearProgressIndicator(),
           for (final (i, l) in lines.indexed)
             Card(
@@ -593,11 +605,19 @@ class _PhotoReviewState extends ConsumerState<PhotoReview> {
       appBar: AppBar(
         title: const Text('사진으로 자료 등록'),
         actions: [
-          TextButton.icon(
-            onPressed: _original,
-            icon: const Icon(Icons.image_outlined),
-            label: const Text('원본 보기'),
-          ),
+          // Narrow phones: icon only, so the title is not cut off.
+          if (compact)
+            IconButton(
+              onPressed: _original,
+              tooltip: '원본 보기',
+              icon: const Icon(Icons.image_outlined),
+            )
+          else
+            TextButton.icon(
+              onPressed: _original,
+              icon: const Icon(Icons.image_outlined),
+              label: const Text('원본 보기'),
+            ),
           StartButton(enabled: !saving, draft: preview != null, returnRoute: true),
         ],
       ),

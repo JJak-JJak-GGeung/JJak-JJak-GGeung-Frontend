@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'shared.dart';
@@ -39,13 +41,16 @@ class PhoneFrame extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           // Screens, sheets and dialogs size themselves from MediaQuery, so
-          // report the frame as the whole screen.
+          // report the frame as the whole screen. A soft keyboard still lifts
+          // the content by the part of it that overlaps the frame.
           child: MediaQuery(
             data: media.copyWith(
               size: Size(_width, height),
               padding: EdgeInsets.zero,
               viewPadding: EdgeInsets.zero,
-              viewInsets: EdgeInsets.zero,
+              viewInsets: EdgeInsets.only(
+                  bottom: math.max(
+                      0.0, media.viewInsets.bottom - (size.height - height) / 2)),
             ),
             child: child,
           ),

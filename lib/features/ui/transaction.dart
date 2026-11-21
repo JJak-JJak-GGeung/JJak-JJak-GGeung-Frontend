@@ -232,10 +232,10 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
     if (item == null) {
       return Screen(
         title: title,
-        children: const [
-          Text('최신 정산에서 이 거래를 찾지 못했습니다.', style: Txt.section),
-          SizedBox(height: 8),
-          Text('자료가 바뀌었을 수 있습니다. 정산 홈에서 확인할 거래를 다시 골라 주세요.', style: Txt.label),
+        children: [
+          Text(keepWords('최신 정산에서 이 거래를 찾지 못했습니다.'), style: Txt.section),
+          const SizedBox(height: 8),
+          const Text('자료가 바뀌었을 수 있습니다. 정산 홈에서 확인할 거래를 다시 골라 주세요.', style: Txt.label),
         ],
         bottom: [
           FilledButton(
@@ -288,16 +288,17 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
                       : null),
           if (tx['check_amount'] != null)
             InfoRow('확인할 차이', '${deltaText(tx)} · ${won(tx['check_amount'])}',
+                stacked: true,
                 caption: delta != null && delta < 0
                     ? '수령 기록이 청구보다 많음 · 승인액이 아닌 산술 차이입니다'
                     : '승인액이 아닌 산술 차이입니다'),
         ], 10),
         const SizedBox(height: 20),
-        const TintCard(
+        TintCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('이 납품 건의 계량표가 있나요?', style: Txt.section),
-            SizedBox(height: 8),
-            Text('두 기록과 청구서의 해당 줄을 볼 수 있어요.', style: Txt.label),
+            Text(keepWords('이 납품 건의 계량표가 있나요?'), style: Txt.section),
+            const SizedBox(height: 8),
+            const Text('두 기록과 청구서의 해당 줄을 볼 수 있어요.', style: Txt.label),
           ]),
         ),
         const SizedBox(height: 16),
@@ -306,9 +307,12 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
         OutlinedButton.icon(
           onPressed: locked || _recording || !receiptsKnown ? null : () => _editReceipt(tx, revision),
           icon: const Icon(Icons.edit_note, size: 20),
-          label: Text(receipts.isEmpty
-              ? '수령 근거 직접 입력'
-              : '수령 근거 정정 · ${qtyText(receipts.last, 'received_qty')}'),
+          label: Text(
+              receipts.isEmpty
+                  ? keepWords('수령 근거 직접 입력')
+                  : '${keepWords('수령 근거 정정')} · ${qtyText(receipts.last, 'received_qty')}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis),
         ),
         const SectionTitle('거래처 답변', caption: '통화가 끝났다면 들은 내용을 남겨 주세요.'),
         if (detail.hasError)
@@ -337,7 +341,8 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
         if (_recording) ...[
           const SizedBox(height: 8),
           const Text('녹음 중입니다. 말을 마치면 녹음 끝내기를 누르세요.',
-              style: TextStyle(fontSize: 13, color: Palette.errInk, fontWeight: FontWeight.w600)),
+              style: TextStyle(
+                  fontFamily: appFont, fontSize: 13, color: Palette.errInk, fontWeight: FontWeight.w600)),
         ],
         const SizedBox(height: 10),
         OutlinedButton(
@@ -371,7 +376,7 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
           const SizedBox(height: 10),
           InfoRow('점주 수령 기록', receivedText(tx)),
           const SizedBox(height: 24),
-          Text(_voice ? '말한 내용을 확인해 주세요' : '들은 내용을 적어 주세요', style: Txt.section),
+          Text(keepWords(_voice ? '말한 내용을 확인해 주세요' : '들은 내용을 적어 주세요'), style: Txt.section),
           const SizedBox(height: 12),
           TextField(
             controller: _memo,
@@ -379,7 +384,7 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
             minLines: 4,
             maxLines: 8,
             enabled: !_busy && !_recording,
-            style: const TextStyle(fontSize: 16, color: Palette.ink, height: 1.55),
+            style: const TextStyle(fontFamily: appFont, fontSize: 16, color: Palette.ink, height: 1.55),
             decoration: const InputDecoration(
               hintText: '예: 거래처는 40kg을 보냈다고 합니다. 우리 기록은 36kg입니다.',
               contentPadding: EdgeInsets.all(16),
@@ -390,7 +395,7 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
           const SizedBox(height: 20),
           TintCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('저장 후에도 ${itemStatus(tx).text}', style: Txt.section),
+              Text(keepWords('저장 후에도 ${itemStatus(tx).text}'), style: Txt.section),
               const SizedBox(height: 8),
               const Text('거래처 답변과 점주 수령 기록을 함께 남겨요.', style: Txt.label),
             ]),
@@ -400,14 +405,16 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
             Expanded(
               child: OutlinedButton(
                 onPressed: _busy || _recording ? null : _memoFocus.requestFocus,
-                child: const Text('내용 수정'),
+                child: const FittedBox(fit: BoxFit.scaleDown, child: Text('내용 수정', maxLines: 1)),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: OutlinedButton(
                 onPressed: _busy ? null : _toggleRecording,
-                child: Text(_recording ? '녹음 끝내기' : '다시 말하기'),
+                child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(_recording ? '녹음 끝내기' : '다시 말하기', maxLines: 1)),
               ),
             ),
           ]),
@@ -418,7 +425,7 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
             child: _busy
                 ? const SizedBox.square(
                     dimension: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                : const Text('답변 저장 · 이 거래만 다시 대조'),
+                : Text(keepWords('답변 저장 · 이 거래만 다시 대조'), textAlign: TextAlign.center),
           ),
           TextButton(
             onPressed: _busy || _recording ? null : _cancelReview,
@@ -481,7 +488,8 @@ class _MemoCard extends StatelessWidget {
           const SizedBox(width: 6),
           const Expanded(
               child: Text('점주가 남긴 통화 메모',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Palette.primary))),
+                  style: TextStyle(
+                      fontFamily: appFont, fontSize: 13, fontWeight: FontWeight.w700, color: Palette.primary))),
         ]),
         if (meta.isNotEmpty) ...[
           const SizedBox(height: 4),
@@ -492,7 +500,8 @@ class _MemoCard extends StatelessWidget {
         const Divider(height: 24, color: Palette.line),
         Row(children: [
           const Expanded(child: Text('점포 수령 기록', style: Txt.label)),
-          Text(received, style: Txt.value),
+          const SizedBox(width: 12),
+          Flexible(child: Text(received, style: Txt.value, textAlign: TextAlign.right)),
         ]),
       ]),
     );
@@ -511,35 +520,37 @@ Future<_ReceiptInput?> _receiptForm(BuildContext context, Json? previous, Object
   return showDialog<_ReceiptInput>(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(previous == null ? '수령 근거 직접 입력' : '수령 근거 정정'),
+      scrollable: true,
+      title: Text(keepWords(previous == null ? '수령 근거 직접 입력' : '수령 근거 정정')),
       content: Form(
         key: form,
-        child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextFormField(
-              initialValue: qty,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) => qty = v.trim(),
-              decoration: const InputDecoration(
-                  labelText: '받은 수량', helperText: '받지 못했다면 0을 입력하세요.'),
-              validator: (_) => RegExp(r'^\d+(\.\d+)?$').hasMatch(qty) ? null : '숫자로 입력하세요.',
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              initialValue: unitText,
-              onChanged: (v) => unitText = v.trim(),
-              decoration: const InputDecoration(labelText: '단위'),
-              validator: (_) => unitText.isEmpty ? '단위를 입력하세요.' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              onChanged: (v) => reason = v.trim(),
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: '확인 근거', hintText: '예: 입고 직후 계량표 36kg'),
-              validator: (_) => reason.isEmpty ? '근거를 입력하세요.' : null,
-            ),
-          ]),
-        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextFormField(
+            initialValue: qty,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: (v) => qty = v.trim(),
+            decoration: const InputDecoration(
+                labelText: '받은 수량',
+                helperText: '받지 못했다면 0을 입력하세요.',
+                helperMaxLines: 2,
+                errorMaxLines: 2),
+            validator: (_) => RegExp(r'^\d+(\.\d+)?$').hasMatch(qty) ? null : '숫자로 입력하세요.',
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            initialValue: unitText,
+            onChanged: (v) => unitText = v.trim(),
+            decoration: const InputDecoration(labelText: '단위'),
+            validator: (_) => unitText.isEmpty ? '단위를 입력하세요.' : null,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            onChanged: (v) => reason = v.trim(),
+            maxLines: 2,
+            decoration: const InputDecoration(labelText: '확인 근거', hintText: '예: 입고 직후 계량표 36kg'),
+            validator: (_) => reason.isEmpty ? '근거를 입력하세요.' : null,
+          ),
+        ]),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),

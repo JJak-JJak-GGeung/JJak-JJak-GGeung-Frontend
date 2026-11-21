@@ -34,7 +34,7 @@ class HomeScreen extends ConsumerWidget {
     if (data != null && data['can_approve'] == true) {
       return FilledButton(
         onPressed: () => context.go(approveRoute(periodId)),
-        child: const Text('청구액 확인 · 승인'),
+        child: Text(keepWords('청구액 확인 · 승인')),
       );
     }
     if (data != null && data['work_status'] == 'APPROVED') {
@@ -56,7 +56,7 @@ class HomeScreen extends ConsumerWidget {
           ? null
           : () =>
               context.go(transactionRoute(periodId, target['transaction_id'])),
-      child: const Text('확인할 거래 보기'),
+      child: Text(keepWords('확인할 거래 보기')),
     );
   }
 }
@@ -77,7 +77,10 @@ class _Body extends ConsumerWidget {
         Expanded(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(supplierName(ref, data), style: Txt.title),
+            Text(supplierName(ref, data),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Txt.title),
             const SizedBox(height: 6),
             Text('주간 정산 · ${periodText(data)}', style: Txt.label),
           ]),
@@ -118,7 +121,7 @@ class _Body extends ConsumerWidget {
           color: Palette.warnBg,
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('승인 전에 확인할 것',
+            Text(keepWords('승인 전에 확인할 것'),
                 style:
                     Txt.value.copyWith(fontSize: 14, color: Palette.warnInk)),
             const SizedBox(height: 6),
@@ -128,7 +131,7 @@ class _Body extends ConsumerWidget {
           ]),
         ),
       ],
-      const SectionTitle('합의한 지급일과 송금 기록'),
+      SectionTitle(keepWords('합의한 지급일과 송금 기록')),
       ...gap([
         InfoRow('지급일', due == null ? '미확인' : dayText(due),
             caption: due == null ? null : '청구서에 적힌 합의 지급일'),
@@ -177,12 +180,20 @@ class _BillCard extends StatelessWidget {
           Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('이번 주 청구액', style: Txt.section),
+              Text(keepWords('이번 주 청구액'), style: Txt.section),
               const SizedBox(height: 4),
               Text(basis, style: Txt.label),
             ]),
           ),
-          Text(won(summary['billed_amount']), style: Txt.amount),
+          const SizedBox(width: 12),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(won(summary['billed_amount']),
+                  maxLines: 1, style: Txt.amount),
+            ),
+          ),
         ]),
         const SizedBox(height: 12),
         const Divider(height: 1, color: Palette.line),

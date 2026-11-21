@@ -47,9 +47,12 @@ class _RegisterNameDialogState extends State<RegisterNameDialog> {
     return PopScope(
       canPop: !saving,
       child: AlertDialog(
-        title: Text('$label 직접 등록'),
+        scrollable: true,
+        title: Text(keepWords('$label 직접 등록')),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          if (widget.store != null) Text('등록할 점포 · ${widget.store!['name']}'),
+          if (widget.store != null)
+            Text('등록할 점포 · ${widget.store!['name']}',
+                maxLines: 2, overflow: TextOverflow.ellipsis),
           TextField(
               autofocus: true,
               enabled: !saving,
@@ -57,7 +60,11 @@ class _RegisterNameDialogState extends State<RegisterNameDialog> {
               decoration: InputDecoration(labelText: '$label 이름'),
               onChanged: (value) => setState(() => name = value),
               onSubmitted: (_) => save()),
-          if (error != null) Text(error!),
+          if (error != null)
+            Text(error!,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: Txt.caption.copyWith(color: Palette.warnInk)),
         ]),
         actions: [
           TextButton(

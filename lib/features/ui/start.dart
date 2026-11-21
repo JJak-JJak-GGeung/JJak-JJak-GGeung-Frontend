@@ -143,7 +143,7 @@ class _StartScreenState extends ConsumerState<StartScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.call_outlined),
-              title: const Text('통화녹음 올리기'),
+              title: Text(keepWords('통화녹음 올리기')),
               subtitle: const Text('받아쓴 내용을 거래의 통화 메모로 저장'),
               onTap: () => Navigator.pop(context, 'call'),
             ),
@@ -213,7 +213,7 @@ class _StartScreenState extends ConsumerState<StartScreen> {
       child: const Icon(Icons.add, size: 30),
     ),
     children: [
-      Text('안녕하세요 admin님', style: Txt.section.copyWith(color: Palette.primary)),
+      Text(keepWords('안녕하세요 admin님'), style: Txt.section.copyWith(color: Palette.primary)),
       const SizedBox(height: 6),
       Text(keepWords('사진으로 시작하거나 내 점포를 여세요'), style: Txt.title),
       const SizedBox(height: 24),
@@ -229,7 +229,7 @@ class _StartScreenState extends ConsumerState<StartScreen> {
         ),
       ),
       if (directoryReady)
-        TextButton.icon(onPressed: () => _register(), icon: const Icon(Icons.add_business_outlined), label: const Text('점포 직접 등록')),
+        TextButton.icon(onPressed: () => _register(), icon: const Icon(Icons.add_business_outlined), label: Text(keepWords('점포 직접 등록'))),
       if (suppliers != null) ...[
         const SizedBox(height: 16),
         _Pending(
@@ -246,9 +246,9 @@ class _StartScreenState extends ConsumerState<StartScreen> {
         ),
       ],
       if (directoryReady && store != null)
-        TextButton.icon(onPressed: () => _register(parent: store), icon: const Icon(Icons.add), label: const Text('거래처 직접 등록')),
+        TextButton.icon(onPressed: () => _register(parent: store), icon: const Icon(Icons.add), label: Text(keepWords('거래처 직접 등록'))),
       if (directoryReady)
-        TextButton(onPressed: () => openSampleDelivery(context, backend), child: const Text('합성 명세표로 연습')),
+        TextButton(onPressed: () => openSampleDelivery(context, backend), child: Text(keepWords('합성 명세표로 연습'))),
       if (periods != null) ...[
         const SectionTitle(
           '정산 기간',
@@ -386,6 +386,7 @@ class _Picker extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         name ?? '$label를 골라 주세요',
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: name == null
                             ? Txt.body.copyWith(
@@ -440,6 +441,7 @@ class _OptionTile extends StatelessWidget {
                 children: [
                   Text(
                     text,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Txt.value.copyWith(
                       color: selected ? Palette.primary : Palette.ink,
@@ -671,7 +673,7 @@ class _UploadTargetSheetState extends State<_UploadTargetSheet> {
                       'period': period,
                     }),
               icon: const Icon(Icons.photo_camera),
-              label: const Text('이 정산에 사진 올리기'),
+              label: Text(keepWords('이 정산에 사진 올리기')),
             ),
           ),
         ],
@@ -699,9 +701,9 @@ class _WeekSheet extends StatelessWidget {
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.75),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 4),
-            child: Text('조회할 주 선택', style: Txt.section),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+            child: Text(keepWords('조회할 주 선택'), style: Txt.section),
           ),
           const Padding(
             padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
