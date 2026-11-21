@@ -22,16 +22,20 @@ String requestKey() => List.generate(
     16, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
 
 class ApiError implements Exception {
-  const ApiError(this.status);
+  const ApiError(this.status, [this.code]);
+  final String? code;
   final int status;
   @override
-  String toString() => switch (status) {
+  String toString() {
+    if (code == 'KEY_REUSE') return '같은 요청 키에 다른 내용이 전송되었습니다. 내용을 다시 확인해 주세요.';
+    return switch (status) {
         401 => '다시 로그인해 주세요.',
         403 => '이 자료를 열 권한이 없습니다.',
         409 => '자료가 변경되었습니다. 최신 근거를 확인한 뒤 다시 시도하세요.',
         422 => '확인할 자료가 남아 있습니다. 입력과 근거를 확인하세요.',
         _ => '요청을 완료하지 못했습니다 ($status).',
       };
+  }
 }
 
 class SettlementApi {
@@ -49,7 +53,12 @@ class SettlementApi {
 
   http.Response _checked(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiError(response.statusCode);
+      String? code;
+      try {
+        final detail = object(jsonDecode(utf8.decode(response.bodyBytes)))['detail'];
+        code = detail is Map ? detail['code']?.toString() : detail?.toString();
+      } catch (_) {}
+      throw ApiError(response.statusCode, code);
     }
     return response;
   }

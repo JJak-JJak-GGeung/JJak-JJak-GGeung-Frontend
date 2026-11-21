@@ -261,6 +261,36 @@ class _SettlementPage extends ConsumerState<SettlementPage> {
     ref.invalidate(settlement(widget.id));
   }
 
+  Future<void> correctLine(Json row, Object revision) async {
+    final quantity = TextEditingController(text: (row['qty_corrected'] ?? row['qty_read'] ?? '').toString());
+    final price = TextEditingController(text: (row['unit_price_corrected'] ?? row['unit_price_read'] ?? '').toString());
+    final amount = TextEditingController(text: (row['amount_corrected'] ?? row['amount_read'] ?? '').toString());
+    final fields = await showDialog<Json>(context: context, builder: (dialog) => AlertDialog(
+      title: const Text('원본과 대조해 판독값 정정'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: quantity, decoration: const InputDecoration(labelText: '수량')),
+        TextField(controller: price, decoration: const InputDecoration(labelText: '단가')),
+        TextField(controller: amount, decoration: const InputDecoration(labelText: '금액')),
+      ]),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialog), child: const Text('취소')),
+        FilledButton(onPressed: () => Navigator.pop(dialog, <String, dynamic>{
+          if (quantity.text.trim().isNotEmpty) 'qty_corrected': quantity.text.trim(),
+          if (price.text.trim().isNotEmpty) 'unit_price_corrected': price.text.trim(),
+          if (amount.text.trim().isNotEmpty) 'amount_corrected': amount.text.trim(),
+        }), child: const Text('확인 저장')),
+      ],
+    ));
+    quantity.dispose();
+    price.dispose();
+    amount.dispose();
+    if (fields == null || fields.isEmpty || !mounted) return;
+    await confirm({
+      'kind': 'line_correction', 'source_line_id': row['line_id'],
+      'corrected_fields': fields, 'evidence_refs': [source(row)],
+    }, revision);
+  }
+
   Future<void> confirm(Json fields, Object? revision) async {
     await api.post(path(widget.id) + '/confirmations', {
       ...fields,
@@ -325,7 +355,37 @@ class _SettlementPage extends ConsumerState<SettlementPage> {
                 FilledButton.tonal(
                     onPressed: busy ? null : () => run(upload),
                     child: const Text('사진 올리기')),
+                for (final doc in objects(data['documents']))
+                  if (doc['source_mode'] == 'FILE') ListTile(
+                    title: Text((doc['filename'] ?? '원본').toString()),
+                    subtitle: Text((doc['doc_type'] ?? '').toString()),
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconButton(
+                        tooltip: '원본 열기',
+                        icon: const Icon(Icons.image_outlined),
+                        onPressed: () => original(context, doc)),
+                      if (doc['extraction_status'] != 'COMPLETED' && doc['extraction_status'] != 'SUCCESS')
+                        IconButton(
+                          tooltip: '판독 다시 시도',
+                          icon: const Icon(Icons.refresh),
+                          onPressed: busy ? null : () => run(() async {
+                            final read = object(await api.post('/api/documents/' + part(doc['document_id']) + '/extraction', {}));
+                            if (mounted) setState(() => uploaded = read);
+                            ref.invalidate(settlement(widget.id));
+                          })),
+                      if (doc['extraction_status'] == 'COMPLETED' || doc['extraction_status'] == 'SUCCESS')
+                        TextButton(
+                          onPressed: busy ? null : () => setState(() => uploaded = doc),
+                          child: const Text('확인 작업')),
+                    ]),
+                    onTap: () => original(context, doc),
+                  ),
                 if (uploaded['document_id'] != null) ...[
+                  Text(uploaded['duplicate'] == true ? '이미 저장된 파일입니다.' : '원본 저장 완료'),
+                  TextButton(
+                    onPressed: () => original(context, uploaded),
+                    child: const Text('저장한 원본 열기')),
+
                   Text('판독 상태 ' +
                       (uploaded['extraction_status'] ?? '—').toString()),
                   for (final row in objects(uploaded['lines']))
@@ -333,7 +393,9 @@ class _SettlementPage extends ConsumerState<SettlementPage> {
                         title: Text((row['delivery_no'] ?? '').toString() +
                             ' · ' +
                             qty(row, 'qty_read')),
-                        trailing: const Text('원본'),
+                        trailing: TextButton(
+                          onPressed: busy || revision == null ? null : () => run(() => correctLine(row, revision)),
+                          child: const Text('판독값 정정')),
                         onTap: () => original(context, source(row))),
                   if (uploaded['doc_type'] == 'RECEIPT')
                     for (final row in objects(uploaded['lines']))
@@ -661,22 +723,7 @@ class _TransactionPage extends ConsumerState<TransactionPage> {
                               ? '음성'
                               : '직접 입력')),
                     if (!demo) ...[
-                      if (revision != null && deliveryId(current) != null) ...[
-                        OutlinedButton(
-                            onPressed: busy
-                                ? null
-                                : () => run(() => receipt(current, revision)),
-                            child: const Text('수령 근거 직접 입력')),
-                        for (final previous in objects(current['receipts']))
-                          if (previous['receipt_id'] != null)
-                            OutlinedButton(
-                                onPressed: busy
-                                    ? null
-                                    : () => run(() =>
-                                        receipt(current, revision, previous)),
-                                child: Text('수령 근거 정정 · ' +
-                                    qty(previous, 'received_qty'))),
-                      ],
+                      const Text('수령 확인은 주간 정산의 수령 기록 원본에서 진행해 주세요.'),
                       TextField(
                           controller: memo,
                           onChanged: (_) => memoKey = null,
