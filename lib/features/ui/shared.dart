@@ -293,11 +293,13 @@ class Screen extends StatelessWidget {
       required this.children,
       this.bottom = const [],
       this.leading = true,
+      this.appBarActions = const [],
       this.floatingActionButton});
   final String title;
   final List<Widget> children;
   final List<Widget> bottom;
   final bool leading;
+  final List<Widget> appBarActions;
 
   /// Bottom-right action, e.g. the start screen's camera button.
   final Widget? floatingActionButton;
@@ -308,6 +310,7 @@ class Screen extends StatelessWidget {
         appBar: AppBar(
           title: Text(title),
           automaticallyImplyLeading: leading,
+          actions: appBarActions,
         ),
         body: SafeArea(
           child: Center(

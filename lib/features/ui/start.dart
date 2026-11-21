@@ -145,26 +145,29 @@ class _StartScreenState extends ConsumerState<StartScreen> {
   Widget build(BuildContext context) => Screen(
     title: '짝짜꿍',
     leading: false,
-    floatingActionButton: Semantics(
-      button: true,
-      label: '사진·통화녹음 올리기',
-      child: Tooltip(
-        message: '사진·통화녹음 올리기',
-        child: Material(
-          shape: const CircleBorder(),
-          clipBehavior: Clip.antiAlias,
-          elevation: 6,
-          color: Palette.primary,
-          // Ink.image keeps the tap ripple visible on top of the icon.
-          child: Ink.image(
-            image: const AssetImage('assets/upload_icon.png'),
-            width: 96,
-            height: 96,
-            fit: BoxFit.cover,
-            child: InkWell(onTap: _openAttach),
+    appBarActions: [
+      Padding(
+        padding: const EdgeInsetsDirectional.only(end: 16),
+        child: Center(
+          child: ClipOval(
+            child: Image.asset(
+              'assets/service_logo.png',
+              width: 36,
+              height: 36,
+              fit: BoxFit.cover,
+              excludeFromSemantics: true,
+            ),
           ),
         ),
       ),
+    ],
+    floatingActionButton: FloatingActionButton(
+      onPressed: _openAttach,
+      tooltip: '사진·통화녹음 올리기',
+      shape: const CircleBorder(),
+      backgroundColor: Palette.primary,
+      foregroundColor: Colors.white,
+      child: const Icon(Icons.add, size: 30),
     ),
     children: [
       Text('안녕하세요 admin님', style: Txt.section.copyWith(color: Palette.primary)),
