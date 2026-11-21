@@ -43,6 +43,52 @@ void main() {
   final bytes = base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aV8AAAAASUVORK5CYII=',
   );
+  for (final type in ['INVOICE', 'CORRECTED_INVOICE']) {
+    testWidgets('$type uses the printed week even when issued the next week',
+        (tester) async {
+      final api = TestBackend();
+      api.choices.addAll({
+        '/api/stores': {
+          'stores': [{'id': 'store', 'name': '점포'}],
+        },
+        '/api/suppliers?store_id=store': {
+          'suppliers': [{'id': 'supplier', 'name': '공급처'}],
+        },
+        '/api/periods?store_id=store&supplier_id=supplier': {
+          'periods': [
+            {'period_id': 'settlement', 'period_start': '2026-11-09',
+              'period_end': '2026-11-15', 'label': '청구 대상 주'},
+            {'period_id': 'issued', 'period_start': '2026-11-16',
+              'period_end': '2026-11-22', 'label': '청구 발행 주'},
+          ],
+        },
+      });
+      api.pending.complete({
+        'signature': 'sig',
+        'draft': {
+          'doc_type': type,
+          'store_name_read': '점포',
+          'supplier_name_read': '공급처',
+          'doc_date': '2026-11-17',
+          'period_start': '2026-11-09',
+          'period_end': '2026-11-15',
+          'lines': [{'item': '장어', 'qty_read': '36', 'unit': 'kg'}],
+        },
+      });
+      await tester.pumpWidget(ProviderScope(
+        child: MaterialApp(
+          home: PhotoReview(
+            PlatformFile(name: 'invoice.png', bytes: bytes, size: bytes.length),
+            api: api,
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      final period = find.byType(DropdownButtonFormField<String>).at(2);
+      expect(tester.widget<DropdownButtonFormField<String>>(period).initialValue,
+          'settlement');
+    });
+  }
   for (final wide in [false, true]) {
     testWidgets('원본은 항상 열리고 편집한 값 유지 / wide=$wide', (tester) async {
       tester.view.physicalSize = Size(wide ? 1100 : 390, 900);
